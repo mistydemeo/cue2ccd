@@ -64,8 +64,8 @@ fn generate_q_subchannel(
     // We only care about setting the data bit, 1; the others are
     // irrelevant for this application.
     match track_type {
-        TrackMode::Audio => q[0] |= 1 << 6,
-        _ => (),
+        TrackMode::Audio => (),
+        _ => q[0] |= 1 << 6,
     };
 
     // Next four bits indicate the mode of the Q channel.
