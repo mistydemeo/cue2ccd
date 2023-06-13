@@ -11,8 +11,7 @@ checksum = "b79de1ea79db6578ee25a7bcc8fddc58f958e6063aed54f426907d9d9f97895e"
 [[package]]
 name = "cue"
 version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bef13de72bdc65acbb69b1b6333902f60d546ef065d45283308097bb60f32d6"
+source = "git+https://github.com/mistydemeo/libcue.rs?rev=7d1c9b8f5f2d0891328e32c7fea90c341ebfbac7#7d1c9b8f5f2d0891328e32c7fea90c341ebfbac7"
 dependencies = [
  "cue-sys",
  "libc",
@@ -20,9 +19,8 @@ dependencies = [
 
 [[package]]
 name = "cue-sys"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bbb8688730ce5ce991f4c8f887d334d2532b74b6c2432d06d702d55ee8a4e7e8"
+version = "1.1.0"
+source = "git+https://github.com/mistydemeo/libcue.rs?rev=7d1c9b8f5f2d0891328e32c7fea90c341ebfbac7#7d1c9b8f5f2d0891328e32c7fea90c341ebfbac7"
 dependencies = [
  "libc",
 ]

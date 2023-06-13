@@ -176,28 +176,26 @@ fn main() -> io::Result<()> {
         // The last track on the disc will have indeterminate length,
         // because the cuesheet doesn't store that; we need to calculate
         // it from the size of the disc.
-        let track_length = if track.get_length() == -1 {
-            sectors as i64 - track.get_start()
-        } else {
-            track.get_length()
-        };
+        let track_length = track
+            .get_length()
+            .unwrap_or(sectors as i64 - track.get_start());
 
         println!("Track: {}", track_num);
-        println!("Index 0: {}", track.get_index(0));
-        println!("Index 1: {}", track.get_index(1));
-        println!("Pregap: {}", track.get_zero_pre());
-        println!("Postgap: {}", track.get_zero_post());
+        println!("Index 0: {}", track.get_index(0).unwrap_or(-1));
+        println!("Index 1: {}", track.get_index(1).unwrap_or(-1));
+        println!("Pregap: {}", track.get_zero_pre().unwrap_or(-1));
+        println!("Postgap: {}", track.get_zero_post().unwrap_or(-1));
         println!("Start: {}; length: {}", track.get_start(), track_length);
         println!();
 
         // Pregap - not every track has one
-        if track.get_zero_pre() != -1 {
-            for lba in (track.get_start() - track.get_zero_pre())..track.get_start() {
+        if let Some(pregap) = track.get_zero_pre() {
+            for lba in (track.get_start() - pregap)..track.get_start() {
                 // For the pregap, always fill the P data sector with FFs.
                 let p: Vec<u8> = vec![0xFF; 12];
                 let q = generate_q_subchannel(
                     lba,
-                    lba - track.get_zero_pre(),
+                    lba - pregap,
                     track.get_start(),
                     track_num,
                     true,
