@@ -188,15 +188,17 @@ fn main() -> io::Result<()> {
         println!("Start: {}; length: {}", track.get_start(), track_length);
         println!();
 
+        let start = track.get_start();
+
         // Pregap - not every track has one
         if let Some(pregap) = track.get_zero_pre() {
-            for lba in (track.get_start() - pregap)..track.get_start() {
+            for lba in (start - pregap)..start {
                 // For the pregap, always fill the P data sector with FFs.
                 let p: Vec<u8> = vec![0xFF; 12];
                 let q = generate_q_subchannel(
                     lba,
                     lba - pregap,
-                    track.get_start(),
+                    start,
                     track_num,
                     true,
                     track.get_mode(),
@@ -212,7 +214,7 @@ fn main() -> io::Result<()> {
             }
         }
 
-        for lba in track.get_start()..track_length + track.get_start() {
+        for lba in start..track_length + start {
             // The first sector of the disc, and only the first sector,
             // gets an FFed out P sector like a pregap. Every other non-pregap
             // sector uses 0s.
@@ -226,8 +228,8 @@ fn main() -> io::Result<()> {
             assert_eq!(12, p.len());
             let q = generate_q_subchannel(
                 lba,
-                lba - track.get_start(),
-                track.get_start() + track_length,
+                lba - start,
+                start + track_length,
                 track_num,
                 false,
                 track.get_mode(),
