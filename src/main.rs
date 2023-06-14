@@ -4,7 +4,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::exit;
 
-use cdrom_crc::crc16;
+use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
 use cue::cd::{DiscMode, CD};
 use cue::track::{Track, TrackMode};
 
@@ -125,7 +125,7 @@ fn generate_q_subchannel(
     q[8] = bcd((absolute_sector / 75) % 60) as u8;
     q[9] = bcd(absolute_sector % 75) as u8;
     // The last two bytes contain a CRC of the main data.
-    let crc = crc16(&q[0..9], 0xFFFF);
+    let crc = crc16(&q[0..10], CRC16_INITIAL_CRC);
     q[10] = ((crc >> 8) & 0xFF) as u8;
     q[11] = (crc & 0xFF) as u8;
 
