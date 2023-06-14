@@ -196,7 +196,8 @@ fn main() -> io::Result<()> {
                 // For the pregap, always fill the P data sector with FFs.
                 let p: Vec<u8> = vec![0xFF; 12];
                 let q = generate_q_subchannel(
-                    lba,
+                    // First 150 sectors are omitted
+                    lba + 151,
                     lba - pregap,
                     start,
                     track_num,
@@ -220,14 +221,15 @@ fn main() -> io::Result<()> {
             // sector uses 0s.
             // For players which ignore the Q subchannel, this allows
             // locating the start of tracks.
-            let p: Vec<u8> = if lba == 1 {
+            let p: Vec<u8> = if lba == 0 {
                 vec![0xFF; 12]
             } else {
                 vec![0; 12]
             };
             assert_eq!(12, p.len());
             let q = generate_q_subchannel(
-                lba,
+                // First 150 sectors are omitted
+                lba + 151,
                 lba - start,
                 start + track_length,
                 track_num,
