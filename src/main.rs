@@ -8,6 +8,145 @@ use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
 use cue::cd::{DiscMode, CD};
 use cue::track::{Track, TrackMode};
 
+struct Disc {
+    tracks: Vec<DiscTrack>,
+    sector_count: i64,
+}
+
+impl Disc {
+    fn sectors(&self) -> SectorIterator {
+        SectorIterator {
+            current: 0,
+            disc: self,
+        }
+    }
+}
+
+struct SectorIterator<'a> {
+    current: i64,
+    disc: &'a Disc,
+}
+
+impl<'a> SectorIterator<'a> {
+    fn sector_from_number(&self, sector: i64) -> Option<Sector> {
+        // We should start at or around sector 0 (actually 150, but who's counting)
+        // (me, I am), which means we can iterate through tracks and indices in order
+        // safely until we hit the one that starts at our sector.
+        for track in &self.disc.tracks {
+            for (i, index) in track.indices.iter().enumerate() {
+                // Edge of the index is either the start of the next index (if there's
+                // another track) or the end of the track.
+                let boundary = if let Some(next) = track.indices.get(i + 1) {
+                    next.start as i64
+                } else {
+                    track.start + track.length
+                };
+
+                if index.start as i64 <= sector && boundary >= sector {
+                    // Pregap counts backwards to the start of the following
+                    // index. Yes, really!
+                    let relative_position = if index.number == 0 {
+                        index.end - sector
+                    } else {
+                        sector - index.start as i64
+                    };
+
+                    return Some(Sector {
+                        start: sector,
+                        relative_position,
+                        size: 2352, // TODO un-hardcode this
+                    });
+                }
+            }
+        }
+
+        None
+    }
+}
+
+impl<'a> Iterator for SectorIterator<'a> {
+    type Item = Sector;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current >= self.disc.sector_count {
+            return None;
+        }
+
+        let sector = self.sector_from_number(self.current);
+
+        self.current += 1;
+
+        sector
+    }
+}
+
+impl Disc {
+    fn from_cuesheet(cuesheet: CD, sector_count: i64) -> Disc {
+        let mut tracks = vec![];
+        for (i, track) in cuesheet.tracks().iter().enumerate() {
+            let tracknum = i + 1;
+
+            let start = track.get_start();
+            // The last track on the disc will have indeterminate length,
+            // because the cuesheet doesn't store that; we need to calculate
+            // it from the size of the disc.
+            let length = track.get_length().unwrap_or(sector_count - start);
+
+            let mut indices = vec![];
+            for i in 0..99 {
+                if let Some(index) = track.get_index(i) {
+                    // Cuesheet doesn't actually track the end of an index,
+                    // so we need to either calculate the boundary of the next
+                    // index within the track or the end of the track itself.
+                    let end = if let Some(next) = track.get_index(i + 1) {
+                        next as i64 - 1
+                    } else {
+                        start + track.get_length().unwrap_or(sector_count)
+                    };
+
+                    indices.push(Index {
+                        number: i as usize,
+                        start: index,
+                        end,
+                    });
+                }
+            }
+
+            tracks.push(DiscTrack {
+                number: tracknum,
+                start: track.get_start(),
+                length,
+                indices,
+            });
+        }
+
+        Disc {
+            tracks,
+            sector_count,
+        }
+    }
+}
+
+struct DiscTrack {
+    number: usize,
+    start: i64,
+    length: i64,
+    indices: Vec<Index>,
+}
+
+struct Index {
+    number: usize,
+    start: isize,
+    end: i64,
+}
+
+#[derive(Debug)]
+struct Sector {
+    start: i64,
+    relative_position: i64,
+    size: usize,
+}
+
 fn has_multiple_files(tracks: Vec<Track>) -> bool {
     let mut tracks_iter = tracks.iter();
     let base_file = tracks_iter.next().unwrap().get_filename();
