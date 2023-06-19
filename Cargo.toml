@@ -8,3 +8,7 @@ edition = "2021"
 [dependencies]
 cdrom_crc = "0.1.0"
 cue = { git = "https://github.com/mistydemeo/libcue.rs", rev = "7d1c9b8f5f2d0891328e32c7fea90c341ebfbac7" }
+
+[dependencies.cdrom]
+path = "cdrom"
+version = "0.1.0"

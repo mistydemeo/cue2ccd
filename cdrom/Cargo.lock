@@ -10,12 +10,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cdrom_crc"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b79de1ea79db6578ee25a7bcc8fddc58f958e6063aed54f426907d9d9f97895e"
-
-[[package]]
 name = "cue"
 version = "1.1.0"
 source = "git+https://github.com/mistydemeo/libcue.rs?rev=7d1c9b8f5f2d0891328e32c7fea90c341ebfbac7#7d1c9b8f5f2d0891328e32c7fea90c341ebfbac7"
@@ -33,16 +27,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cue2ccd"
-version = "0.1.0"
-dependencies = [
- "cdrom",
- "cdrom_crc",
- "cue",
-]
-
-[[package]]
 name = "libc"
-version = "0.2.144"
+version = "0.2.146"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b00cc1c228a6782d0f076e7b232802e0c5689d41bb5df366f2a6b6621cfdfe1"
+checksum = "f92be4933c13fd498862a9e02a3055f8a8d9c039ce33db97306fd5a6caa7f29b"

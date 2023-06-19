@@ -4,202 +4,10 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::exit;
 
+use cdrom::{Disc, TrackMode};
 use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
-use cue::cd::{DiscMode, CD};
-use cue::track::{Track, TrackMode};
-
-struct Disc {
-    tracks: Vec<DiscTrack>,
-    sector_count: i64,
-}
-
-impl Disc {
-    fn sectors(&self) -> SectorIterator {
-        SectorIterator {
-            current: 0,
-            disc: self,
-        }
-    }
-}
-
-struct SectorIterator<'a> {
-    current: i64,
-    disc: &'a Disc,
-}
-
-impl<'a> SectorIterator<'a> {
-    fn sector_from_number(&self, sector: i64) -> Option<Sector> {
-        // We should start at or around sector 0 (actually 150, but who's counting)
-        // (me, I am), which means we can iterate through tracks and indices in order
-        // safely until we hit the one that starts at our sector.
-        for track in &self.disc.tracks {
-            for (i, index) in track.indices.iter().enumerate() {
-                // Edge of the index is either the start of the next index (if there's
-                // another index) or the end of the track.
-                let boundary = if let Some(next) = track.indices.get(i + 1) {
-                    next.start as i64
-                } else {
-                    track.start + track.length
-                };
-
-                if index.start as i64 <= sector && boundary >= sector {
-                    // Yes, it's okay for this to be negative! Pregap counts backwards
-                    // to the start of the following index.
-                    let relative_position = sector - track.start as i64;
-
-                    return Some(Sector {
-                        start: sector,
-                        // Convenience for indexing relative to the start of the disc,
-                        // rather than the start of the disc image.
-                        // Yes, it means the first sector isn't sector 1.
-                        absolute_start: sector + 151,
-                        relative_position,
-                        size: 2352, // TODO un-hardcode this
-                        // Worry about lifetimes later, this is small anyway
-                        track: track.clone(),
-                        index: index.clone(),
-                    });
-                }
-            }
-        }
-
-        None
-    }
-}
-
-impl<'a> Iterator for SectorIterator<'a> {
-    type Item = Sector;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current >= self.disc.sector_count {
-            return None;
-        }
-
-        let sector = self.sector_from_number(self.current);
-
-        self.current += 1;
-
-        sector
-    }
-}
-
-impl Disc {
-    fn from_cuesheet(cuesheet: CD, sector_count: i64) -> Disc {
-        let mut tracks = vec![];
-        for (i, track) in cuesheet.tracks().iter().enumerate() {
-            let tracknum = i + 1;
-
-            let start = track.get_start();
-            // The last track on the disc will have indeterminate length,
-            // because the cuesheet doesn't store that; we need to calculate
-            // it from the size of the disc.
-            let length = track.get_length().unwrap_or(sector_count - start);
-
-            let mut indices = vec![];
-            for i in 0..99 {
-                if let Some(index) = track.get_index(i) {
-                    // Cuesheet doesn't actually track the end of an index,
-                    // so we need to either calculate the boundary of the next
-                    // index within the track or the end of the track itself.
-                    let end = if let Some(next) = track.get_index(i + 1) {
-                        next as i64 - 1
-                    } else {
-                        start + track.get_length().unwrap_or(sector_count)
-                    };
-
-                    indices.push(Index {
-                        number: i as usize,
-                        start: index,
-                        end,
-                    });
-                }
-            }
-
-            tracks.push(DiscTrack {
-                number: tracknum,
-                start: track.get_start(),
-                length,
-                indices,
-                mode: DiscTrackMode::from_cue_mode(track.get_mode()),
-            });
-        }
-
-        Disc {
-            tracks,
-            sector_count,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-struct DiscTrack {
-    number: usize,
-    start: i64,
-    length: i64,
-    indices: Vec<Index>,
-    mode: DiscTrackMode,
-}
-
-// Ugly workaround to avoid embedding cue types, rework later
-#[derive(Clone, Debug)]
-enum DiscTrackMode {
-    Audio,
-    /// 2048-byte data without ECC
-    Mode1,
-    /// 2048-byte data with ECC
-    Mode1Raw,
-    /// 2336-byte data without ECC
-    Mode2,
-    /// 2048-byte data (CD-ROM XA)
-    Mode2Form1,
-    /// 2324-byte data (CD-ROM XA)
-    Mode2Form2,
-    /// 2332-byte data (CD-ROM XA)
-    Mode2FormMix,
-    /// 2336-byte data with ECC
-    Mode2Raw,
-}
-
-impl DiscTrackMode {
-    fn from_cue_mode(mode: TrackMode) -> DiscTrackMode {
-        match mode {
-            TrackMode::Audio => DiscTrackMode::Audio,
-            TrackMode::Mode1 => DiscTrackMode::Mode1,
-            TrackMode::Mode1Raw => DiscTrackMode::Mode1Raw,
-            TrackMode::Mode2 => DiscTrackMode::Mode2,
-            TrackMode::Mode2Form1 => DiscTrackMode::Mode2Form1,
-            TrackMode::Mode2Form2 => DiscTrackMode::Mode2Form2,
-            TrackMode::Mode2FormMix => DiscTrackMode::Mode2FormMix,
-            TrackMode::Mode2Raw => DiscTrackMode::Mode2Raw,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-struct Index {
-    // Number of the current index; index 0 is the pregap, index 1 onward are the track proper
-    number: usize,
-    // Start of the current index, in sectors
-    start: isize,
-    // End of the current index, in sectors
-    end: i64,
-}
-
-#[derive(Debug)]
-struct Sector {
-    // Sector number, relative to the start of the image
-    start: i64,
-    // Sector number, relative to the start of the disc
-    absolute_start: i64,
-    // Relative position to index 1 of the current track
-    relative_position: i64,
-    // Size of the sector, in bytes
-    size: usize,
-    // Metadata for the current track
-    track: DiscTrack,
-    // Metadata for the current index
-    index: Index,
-}
+use cue::cd::CD;
+use cue::track::Track;
 
 fn has_multiple_files(tracks: Vec<Track>) -> bool {
     let mut tracks_iter = tracks.iter();
@@ -246,7 +54,7 @@ fn generate_q_subchannel(
     relative_sector: i64,
     track: usize,
     index: usize,
-    track_type: DiscTrackMode,
+    track_type: TrackMode,
 ) -> Vec<u8> {
     // This channel made up of a sequence of bits; we'll start by
     // zeroing it out, then setting individual bits.
@@ -256,7 +64,7 @@ fn generate_q_subchannel(
     // We only care about setting the data bit, 1; the others are
     // irrelevant for this application.
     match track_type {
-        DiscTrackMode::Audio => (),
+        TrackMode::Audio => (),
         _ => q[0] |= 1 << 6,
     };
 
