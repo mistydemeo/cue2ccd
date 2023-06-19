@@ -35,7 +35,7 @@ impl<'a> SectorIterator<'a> {
         for track in &self.disc.tracks {
             for (i, index) in track.indices.iter().enumerate() {
                 // Edge of the index is either the start of the next index (if there's
-                // another track) or the end of the track.
+                // another index) or the end of the track.
                 let boundary = if let Some(next) = track.indices.get(i + 1) {
                     next.start as i64
                 } else {
