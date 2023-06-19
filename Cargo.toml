@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "4.3.4", features = ["derive"] }
 cue = { git = "https://github.com/mistydemeo/libcue.rs", rev = "7d1c9b8f5f2d0891328e32c7fea90c341ebfbac7" }
 
 [dependencies.cdrom]

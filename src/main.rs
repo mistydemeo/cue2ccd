@@ -1,12 +1,23 @@
-use std::env::args;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 use std::process::exit;
 
 use cdrom::Disc;
+use clap::Parser;
 use cue::cd::CD;
 use cue::track::Track;
+
+#[derive(Parser, Debug)]
+#[command(
+    author,
+    version,
+    about,
+    long_about = "Generate CCD and SUB files from BIN/CUE"
+)]
+struct Args {
+    filename: String,
+}
 
 fn has_multiple_files(tracks: Vec<Track>) -> bool {
     let mut tracks_iter = tracks.iter();
@@ -26,21 +37,10 @@ fn sector_count(size: u64, sector_size: u64) -> u64 {
 }
 
 fn main() -> io::Result<()> {
-    // This is all super ugly obviously but it's just standing in for real
-    // arg parsing to come later.
-    let mut argv = args();
-    argv.next(); // programname
-    let cue_sheet;
-    let root;
-    let fname;
-    if let Some(filename) = argv.next() {
-        fname = filename;
-        root = Path::new(&fname).parent().unwrap();
-        cue_sheet = std::fs::read_to_string(&fname)?;
-    } else {
-        println!("No cuesheet provided");
-        exit(1);
-    }
+    let args = Args::parse();
+
+    let root = Path::new(&args.filename).parent().unwrap();
+    let cue_sheet = std::fs::read_to_string(&args.filename)?;
 
     let cd = CD::parse(cue_sheet)?;
 
