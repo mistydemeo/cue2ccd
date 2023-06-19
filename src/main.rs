@@ -55,7 +55,7 @@ fn main() -> io::Result<()> {
         println!("Cuesheet file {} does not exist", file.to_string_lossy());
         exit(1);
     }
-    let filesize = file.metadata().unwrap().len();
+    let filesize = file.metadata()?.len();
     // TODO deal with non-2352 byte per sector images (treat as an error?)
     let sectors = sector_count(filesize, 2352);
     println!("Image is {} sectors long", sectors);
