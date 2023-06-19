@@ -38,7 +38,7 @@ impl<'a> SectorIterator<'a> {
                 if index.start as i64 <= sector && boundary >= sector {
                     // Yes, it's okay for this to be negative! Pregap counts backwards
                     // to the start of the following index.
-                    let relative_position = sector - track.start as i64;
+                    let relative_position = sector - track.start;
 
                     return Some(Sector {
                         start: sector,
