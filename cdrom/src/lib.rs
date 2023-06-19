@@ -287,8 +287,8 @@ impl Sector {
         // running time within each index.
         // FRAC is a unit of 1/75th of a second, e.g. the
         // duration of exactly one sector.
-        // In the pregap, this starts at the pregap duration
-        // and counts down to 0.
+        // In the pregap, this starts at negative the
+        // pregap duration and counts up to 0.
         // In the actual content, this starts at 0 and
         // counts up.
         // MIN
