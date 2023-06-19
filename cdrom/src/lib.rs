@@ -224,7 +224,7 @@ impl Sector {
         // sector uses 0s.
         // For players which ignore the Q subchannel, this allows
         // locating the start of tracks.
-        let mut p: Vec<u8> = if self.start == 0 || self.index.number == 0 {
+        let mut p = if self.start == 0 || self.index.number == 0 {
             vec![0xFF; 12]
         } else {
             vec![0; 12]
@@ -236,7 +236,7 @@ impl Sector {
             self.index.number,
             self.track.mode,
         );
-        let mut rest: Vec<u8> = vec![0; 72];
+        let mut rest = vec![0; 72];
 
         let mut out = vec![];
         out.append(&mut p);
