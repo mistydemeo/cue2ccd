@@ -6,6 +6,7 @@ version = 3
 name = "cdrom"
 version = "0.1.0"
 dependencies = [
+ "cdrom_crc",
  "cue",
 ]
 
@@ -37,7 +38,6 @@ name = "cue2ccd"
 version = "0.1.0"
 dependencies = [
  "cdrom",
- "cdrom_crc",
  "cue",
 ]
 

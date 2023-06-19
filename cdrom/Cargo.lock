@@ -6,8 +6,15 @@ version = 3
 name = "cdrom"
 version = "0.1.0"
 dependencies = [
+ "cdrom_crc",
  "cue",
 ]
+
+[[package]]
+name = "cdrom_crc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b79de1ea79db6578ee25a7bcc8fddc58f958e6063aed54f426907d9d9f97895e"
 
 [[package]]
 name = "cue"
