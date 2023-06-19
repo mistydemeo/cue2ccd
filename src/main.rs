@@ -49,6 +49,10 @@ impl<'a> SectorIterator<'a> {
 
                     return Some(Sector {
                         start: sector,
+                        // Convenience for indexing relative to the start of the disc,
+                        // rather than the start of the disc image.
+                        // Yes, it means the first sector isn't sector 1.
+                        absolute_start: sector + 151,
                         relative_position,
                         size: 2352, // TODO un-hardcode this
                         // Worry about lifetimes later, this is small anyway
@@ -173,17 +177,27 @@ impl DiscTrackMode {
 
 #[derive(Clone, Debug)]
 struct Index {
+    // Number of the current index; index 0 is the pregap, index 1 onward are the track proper
     number: usize,
+    // Start of the current index, in sectors
     start: isize,
+    // End of the current index, in sectors
     end: i64,
 }
 
 #[derive(Debug)]
 struct Sector {
+    // Sector number, relative to the start of the image
     start: i64,
+    // Sector number, relative to the start of the disc
+    absolute_start: i64,
+    // Relative position to index 1 of the current track
     relative_position: i64,
+    // Size of the sector, in bytes
     size: usize,
+    // Metadata for the current track
     track: DiscTrack,
+    // Metadata for the current index
     index: Index,
 }
 
@@ -230,10 +244,9 @@ fn bcd(dec: i64) -> i64 {
 fn generate_q_subchannel(
     absolute_sector: i64,
     relative_sector: i64,
-    last_sector: i64,
-    track: i64,
-    is_pregap: bool,
-    track_type: TrackMode,
+    track: usize,
+    index: usize,
+    track_type: DiscTrackMode,
 ) -> Vec<u8> {
     // This channel made up of a sequence of bits; we'll start by
     // zeroing it out, then setting individual bits.
@@ -243,7 +256,7 @@ fn generate_q_subchannel(
     // We only care about setting the data bit, 1; the others are
     // irrelevant for this application.
     match track_type {
-        TrackMode::Audio => (),
+        DiscTrackMode::Audio => (),
         _ => q[0] |= 1 << 6,
     };
 
@@ -257,22 +270,13 @@ fn generate_q_subchannel(
     q[0] |= 1 << 0;
     // OK, it's data time! This is the next 9 bytes.
     // This contains timing info for the current track.
-    if is_pregap {
-        // TODO validate the track number going in here
-        q[1] = track as u8 + 1;
-    } else {
-        q[1] = track as u8;
-    }
+    q[1] = track as u8;
 
     // Next is the index. While it supports values up to 99,
-    // we're only going to use two values:
+    // usually only two values are seen:
     // 00 - Pregap or postgap
     // 01 - First index within the track, or leadout
-    if is_pregap {
-        q[2] = 0;
-    } else {
-        q[2] = 1;
-    }
+    q[2] = index as u8;
 
     // The next three fields, MIN, SEC, and FRAC, are the
     // running time within each index.
@@ -282,18 +286,12 @@ fn generate_q_subchannel(
     // and counts down to 0.
     // In the actual content, this starts at 0 and
     // counts up.
-    let time;
-    if is_pregap {
-        time = 150 + 1 - (absolute_sector - last_sector);
-    } else {
-        time = relative_sector;
-    }
     // MIN
-    q[3] = bcd(time / 4500) as u8;
+    q[3] = bcd(relative_sector / 4500) as u8;
     // SEC
-    q[4] = bcd((time / 75) % 60) as u8;
+    q[4] = bcd((relative_sector / 75) % 60) as u8;
     // FRAC
-    q[5] = bcd(time % 75) as u8;
+    q[5] = bcd(relative_sector % 75) as u8;
     // Next byte is always zero
     q[6] = 0;
     // The next three bytes provide an absolute timestamp,
@@ -351,90 +349,29 @@ fn main() -> io::Result<()> {
 
     let disc = Disc::from_cuesheet(cd, sectors as i64);
     for sector in disc.sectors() {
-        println!("{:?}", sector);
+        // The first sector of the disc, and only the first sector,
+        // gets an FFed out P sector like a pregap. Every other non-pregap
+        // sector uses 0s.
+        // For players which ignore the Q subchannel, this allows
+        // locating the start of tracks.
+        let p: Vec<u8> = if sector.start == 0 || sector.index.number == 0 {
+            vec![0xFF; 12]
+        } else {
+            vec![0; 12]
+        };
+        let q = generate_q_subchannel(
+            sector.absolute_start,
+            sector.relative_position,
+            sector.track.number,
+            sector.index.number,
+            sector.track.mode,
+        );
+        assert_eq!(12, q.len());
+        let rest: Vec<u8> = vec![0; 72];
+        sub_write.write_all(&p)?;
+        sub_write.write_all(&q)?;
+        sub_write.write_all(&rest)?;
     }
-
-    // for (i, track) in cd.tracks().iter().enumerate() {
-    //     let track_num = i as i64 + 1;
-
-    //     // The last track on the disc will have indeterminate length,
-    //     // because the cuesheet doesn't store that; we need to calculate
-    //     // it from the size of the disc.
-    //     let track_length = track
-    //         .get_length()
-    //         .unwrap_or(sectors as i64 - track.get_start());
-
-    //     println!("Track: {}", track_num);
-    //     println!("Index 0: {}", track.get_index(0).unwrap_or(-1));
-    //     println!("Index 1: {}", track.get_index(1).unwrap_or(-1));
-    //     println!("Pregap: {}", track.get_zero_pre().unwrap_or(-1));
-    //     println!("Postgap: {}", track.get_zero_post().unwrap_or(-1));
-    //     println!("Start: {}; length: {}", track.get_start(), track_length);
-    //     println!();
-
-    //     let start = track.get_start();
-
-    //     // Pregap - not every track has one
-    //     if let Some(pregap) = track.get_zero_pre() {
-    //         for lba in (start - pregap)..start {
-    //             // For the pregap, always fill the P data sector with FFs.
-    //             let p: Vec<u8> = vec![0xFF; 12];
-    //             let q = generate_q_subchannel(
-    //                 // First 150 sectors are omitted
-    //                 lba + 151,
-    //                 lba - pregap,
-    //                 start,
-    //                 track_num,
-    //                 true,
-    //                 track.get_mode(),
-    //             );
-    //             assert_eq!(12, q.len());
-    //             // We only write out actual P and Q data;
-    //             // the rest is undefined by the CD-ROM spec, and we're
-    //             // not making CD-TEXT or CD+G discs.
-    //             let rest: Vec<u8> = vec![0; 72];
-    //             sub_write.write_all(&p)?;
-    //             sub_write.write_all(&q)?;
-    //             sub_write.write_all(&rest)?;
-    //         }
-    //     }
-
-    //     for lba in start..track_length + start {
-    //         // The first sector of the disc, and only the first sector,
-    //         // gets an FFed out P sector like a pregap. Every other non-pregap
-    //         // sector uses 0s.
-    //         // For players which ignore the Q subchannel, this allows
-    //         // locating the start of tracks.
-    //         let p: Vec<u8> = if lba == 0 {
-    //             vec![0xFF; 12]
-    //         } else {
-    //             vec![0; 12]
-    //         };
-    //         assert_eq!(12, p.len());
-    //         let q = generate_q_subchannel(
-    //             // First 150 sectors are omitted
-    //             lba + 151,
-    //             lba - start,
-    //             start + track_length,
-    //             track_num,
-    //             false,
-    //             track.get_mode(),
-    //         );
-    //         assert_eq!(12, q.len());
-    //         let rest: Vec<u8> = vec![0; 72];
-    //         sub_write.write_all(&p)?;
-    //         sub_write.write_all(&q)?;
-    //         sub_write.write_all(&rest)?;
-    //     }
-    // }
-
-    // println!("Number of tracks: {}", cd.get_track_count());
-    // let mode = match cd.get_mode() {
-    //     DiscMode::CD_DA => "CD-DA",
-    //     DiscMode::CD_ROM => "CD-ROM",
-    //     DiscMode::CD_ROM_XA => "CD-ROM XA",
-    // };
-    // println!("Mode: {}", mode);
 
     Ok(())
 }
