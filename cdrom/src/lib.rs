@@ -64,7 +64,7 @@ impl Disc {
         entry += 1;
 
         for track in &self.tracks {
-            self.write_track(writer, entry, Pointer::Track(track.number as u8), track)?;
+            self.write_track(writer, entry, Pointer::Track(track.number), track)?;
             entry += 1;
         }
 
@@ -192,12 +192,12 @@ impl<'a> SectorIterator<'a> {
                 // Edge of the index is either the start of the next index (if there's
                 // another index) or the end of the track.
                 let boundary = if let Some(next) = track.indices.get(i + 1) {
-                    next.start as i64
+                    next.start
                 } else {
                     track.start + track.length
                 };
 
-                if index.start as i64 <= sector && boundary >= sector {
+                if index.start <= sector && boundary >= sector {
                     // Yes, it's okay for this to be negative! Pregap counts backwards
                     // to the start of the following index.
                     let relative_position = sector - track.start;
@@ -242,7 +242,7 @@ impl Disc {
     pub fn from_cuesheet(cuesheet: CD, sector_count: i64) -> Disc {
         let mut tracks = vec![];
         for (i, track) in cuesheet.tracks().iter().enumerate() {
-            let tracknum = i + 1;
+            let tracknum = i as u8 + 1;
 
             let start = track.get_start();
             // The last track on the disc will have indeterminate length,
@@ -263,8 +263,8 @@ impl Disc {
                     };
 
                     indices.push(Index {
-                        number: i as usize,
-                        start: index,
+                        number: i as u8,
+                        start: index as i64,
                         end,
                     });
                 }
@@ -288,7 +288,7 @@ impl Disc {
 
 #[derive(Clone, Debug)]
 pub struct Track {
-    pub number: usize,
+    pub number: u8,
     pub start: i64,
     pub length: i64,
     pub indices: Vec<Index>,
@@ -333,9 +333,9 @@ impl TrackMode {
 #[derive(Clone, Debug)]
 pub struct Index {
     // Number of the current index; index 0 is the pregap, index 1 onward are the track proper
-    pub number: usize,
+    pub number: u8,
     // Start of the current index, in sectors
-    pub start: isize,
+    pub start: i64,
     // End of the current index, in sectors
     pub end: i64,
 }
@@ -410,8 +410,8 @@ impl Sector {
     fn generate_q_subchannel(
         absolute_sector: i64,
         relative_sector: i64,
-        track: usize,
-        index: usize,
+        track: u8,
+        index: u8,
         track_type: TrackMode,
     ) -> Vec<u8> {
         // This channel made up of a sequence of bits; we'll start by
@@ -436,13 +436,13 @@ impl Sector {
         q[0] |= 1 << 0;
         // OK, it's data time! This is the next 9 bytes.
         // This contains timing info for the current track.
-        q[1] = track as u8;
+        q[1] = track;
 
         // Next is the index. While it supports values up to 99,
         // usually only two values are seen:
         // 00 - Pregap or postgap
         // 01 - First index within the track, or leadout
-        q[2] = index as u8;
+        q[2] = index;
 
         // The next three fields, MIN, SEC, and FRAC, are the
         // running time within each index.
