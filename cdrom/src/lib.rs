@@ -1,6 +1,13 @@
+use std::fs::File;
+use std::io::{self, Write};
+
 use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
 use cue::cd::CD;
 use cue::track;
+
+fn lba_to_msf(lba: i64) -> (i64, i64, i64) {
+    (lba / 4500, (lba / 75) % 60, lba % 75)
+}
 
 pub struct Disc {
     pub tracks: Vec<Track>,
@@ -13,6 +20,160 @@ impl Disc {
             current: 0,
             disc: self,
         }
+    }
+
+    pub fn write_ccd(&self, writer: &mut File) -> io::Result<()> {
+        // Instead of using a real INI parser, write out via format strings.
+        // The stuff we're doing here is simple enough.
+        // Note that many values here are hardcoded, because we're not doing a
+        // full implementation of every CD feature, even if they were in the
+        // source BIN/CUE.
+        writeln!(writer, "[CloneCD]")?;
+        write!(writer, "Version=3\n\n")?;
+
+        writeln!(writer, "[Disc]")?;
+        // We always write out exactly 3 TOC entries more than the number of tracks.
+        // That accounts for extra TOC entries such as the leadout.
+        writeln!(writer, "TocEntries={}", self.tracks.len() + 3)?;
+        // Multisession cuesheets are rare, we're pretending they don't exist
+        writeln!(writer, "Sessions=1")?;
+        writeln!(writer, "DataTracksScrambled=0")?;
+        // CD-TEXT not yet supported
+        write!(writer, "CDTextLength=0\n\n")?;
+
+        writeln!(writer, "[Session 1]")?;
+        writeln!(writer, "PreGapMode=2")?;
+        write!(writer, "PreGapSubC=0\n\n")?;
+
+        // To match other tools, we write track 1 and the final track before
+        // going back to write the other tracks.
+        let first_track = &self.tracks[0];
+        let last_track = if self.tracks.len() > 1 {
+            &self.tracks[self.tracks.len()]
+        } else {
+            first_track
+        };
+
+        let mut entry = 0;
+
+        self.write_track(writer, entry, Pointer::FirstTrack, first_track)?;
+        entry += 1;
+        self.write_track(writer, entry, Pointer::LastTrack, last_track)?;
+        entry += 1;
+        self.write_track(writer, entry, Pointer::LeadOut, last_track)?;
+        entry += 1;
+
+        for track in &self.tracks {
+            self.write_track(writer, entry, Pointer::Track(track.number as u8), track)?;
+            entry += 1;
+        }
+
+        // Next, we want to handle writing out the track index.
+        // This is a vaguely cuesheet-like format that's optional.
+        for track in &self.tracks {
+            self.write_track_entry(writer, track)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_track(
+        &self,
+        writer: &mut File,
+        entry: usize,
+        pointer: Pointer,
+        track: &Track,
+    ) -> io::Result<()> {
+        // The data in a CCD file is a low-level representation of the disc's leadin
+        // in a plaintext INI format.
+        // For some more information keys and their values, see
+        // https://psx-spx.consoledev.net/cdromdrive/
+        writeln!(writer, "[Entry {}]", entry)?;
+        writeln!(writer, "Session=1")?;
+        // Pointer is either a track number from 1 to 99, *or* it's a control
+        // code. Valid control codes according to the spec are:
+        // A0 - P-MIN field indicates the first information track, and P-SEC/P-FRAC are zero
+        // A1 - P-MIN field indicates the last information track, and P-SEC/P-FRAC are zero
+        // A2 - P-MIN field indicates the start of the leadout, and P-SEC/P-FRAC are zero
+        // For more detail, see section 22.3.4.2 of ECMA-130.
+        writeln!(writer, "Point=0x{:02x}", pointer.as_u8())?;
+
+        // Next, based on that value, we need to determine how to set M/S/F.
+        // They might not actually be the real timekeeping info, based on the above.
+        let lba;
+        let m;
+        let s;
+        let f;
+        match pointer {
+            Pointer::FirstTrack | Pointer::LastTrack => {
+                lba = track.number as i64 * 4500 - 150;
+                m = track.number as i64;
+                s = 0;
+                f = 0;
+            }
+            Pointer::LeadOut => {
+                lba = self.sector_count;
+                // M/S/F differs from LBA by pregap size
+                // Right now we're hardcoding that.
+                // Should un-hardcode this later, but this also smells
+                // suspiciously like an off-by-150 error on one side?
+                (m, s, f) = lba_to_msf(lba + 150);
+            }
+            _ => {
+                lba = track.start;
+                (m, s, f) = lba_to_msf(track.start + 150);
+            }
+        }
+
+        writeln!(writer, "ADR=0x01")?;
+        // Control field. This is a 4-bit value defining the track type.
+        // There are more settings, but we only set these two.
+        // See section 22.3.1 of ECMA-130.
+        let control = if let TrackMode::Audio = track.mode {
+            // Audio track, all bits 0
+            0
+        } else {
+            // Data with copy flag set - 0100
+            4
+        };
+        writeln!(writer, "Control=0x{:02x}", control)?;
+        // Yes, this is hardcodable despite what it looks like
+        writeln!(writer, "TrackNo=0")?;
+        // Despite the A-MIN/SEC/FRAC values in the subchannel always containing
+        // an absolute timestamp, here they're always zeroed out.
+        writeln!(writer, "AMin=0")?;
+        writeln!(writer, "ASec=0")?;
+        writeln!(writer, "AFrame=0")?;
+        // Should probably be calculated based on the pregap
+        writeln!(writer, "ALBA=-150")?;
+        writeln!(writer, "Zero=0")?;
+        // These three next values are the absolute MIN/SEC/FRAC
+        writeln!(writer, "PMin={}", m)?;
+        writeln!(writer, "PSec={}", s)?;
+        writeln!(writer, "PFrame={}", f)?;
+        write!(writer, "PLBA={}\n\n", lba)?;
+
+        Ok(())
+    }
+
+    fn write_track_entry(&self, writer: &mut File, track: &Track) -> io::Result<()> {
+        writeln!(writer, "[TRACK {}]", track.number)?;
+        let mode = match track.mode {
+            TrackMode::Audio => 0,
+            TrackMode::Mode1 | TrackMode::Mode1Raw => 1,
+            TrackMode::Mode2
+            | TrackMode::Mode2Raw
+            | TrackMode::Mode2Form1
+            | TrackMode::Mode2Form2
+            | TrackMode::Mode2FormMix => 2,
+        };
+        writeln!(writer, "MODE={}", mode)?;
+
+        for index in &track.indices {
+            writeln!(writer, "INDEX {}={}", index.number, index.start)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -312,5 +473,24 @@ impl Sector {
         q[11] = (crc & 0xFF) as u8;
 
         q
+    }
+}
+
+// For more detail, see section 22.3.4.2 of ECMA-130.
+enum Pointer {
+    Track(u8),
+    FirstTrack,
+    LastTrack,
+    LeadOut,
+}
+
+impl Pointer {
+    fn as_u8(&self) -> u8 {
+        match self {
+            Self::Track(value) => *value,
+            Self::FirstTrack => 0xA0,
+            Self::LastTrack => 0xA1,
+            Self::LeadOut => 0xA2,
+        }
     }
 }
