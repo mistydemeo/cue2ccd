@@ -19,6 +19,25 @@ struct Args {
     filename: String,
 }
 
+// For more detail, see section 22.3.4.2 of ECMA-130.
+enum Pointer {
+    Track(u8),
+    FirstTrack,
+    LastTrack,
+    LeadOut,
+}
+
+impl Pointer {
+    fn as_u8(&self) -> u8 {
+        match self {
+            Self::Track(value) => *value,
+            Self::FirstTrack => 0xA0,
+            Self::LastTrack => 0xA1,
+            Self::LeadOut => 0xA2,
+        }
+    }
+}
+
 fn has_multiple_files(tracks: Vec<Track>) -> bool {
     let mut tracks_iter = tracks.iter();
     let base_file = tracks_iter.next().unwrap().get_filename();
@@ -43,7 +62,7 @@ fn lba_to_msf(lba: i64) -> (i64, i64, i64) {
 fn write_track(
     writer: &mut File,
     entry: usize,
-    pointer: u8,
+    pointer: Pointer,
     track: &cdrom::Track,
 ) -> io::Result<()> {
     write!(writer, "[Entry {}]\n", entry)?;
@@ -54,7 +73,7 @@ fn write_track(
     // A1 - P-MIN field indicates the last information track, and P-SEC/P-FRAC are zero
     // A2 - P-MIN field indicates the start of the leadout, and P-SEC/P-FRAC are zero
     // For more detail, see section 22.3.4.2 of ECMA-130.
-    write!(writer, "Point=0x{:02x}\n", pointer)?;
+    write!(writer, "Point=0x{:02x}\n", pointer.as_u8())?;
 
     // Next, based on that value, we need to determine how to set M/S/F.
     // They might not actually be the real timekeeping info, based on the above.
@@ -62,12 +81,12 @@ fn write_track(
     let s;
     let f;
     match pointer {
-        0xA0 | 0xA1 => {
+        Pointer::FirstTrack | Pointer::LastTrack => {
             m = track.number as i64;
             s = 0;
             f = 0;
         }
-        0xA2 => (m, s, f) = lba_to_msf(track.start + track.length + 150),
+        Pointer::LeadOut => (m, s, f) = lba_to_msf(track.start + track.length + 150),
         _ => (m, s, f) = lba_to_msf(track.start),
     }
 
@@ -170,15 +189,20 @@ fn main() -> io::Result<()> {
 
     let mut entry = 0;
 
-    write_track(&mut ccd_write, entry, 0xA0, first_track)?;
+    write_track(&mut ccd_write, entry, Pointer::FirstTrack, first_track)?;
     entry += 1;
-    write_track(&mut ccd_write, entry, 0xA1, last_track)?;
+    write_track(&mut ccd_write, entry, Pointer::LastTrack, last_track)?;
     entry += 1;
-    write_track(&mut ccd_write, entry, 0xA2, last_track)?;
+    write_track(&mut ccd_write, entry, Pointer::LeadOut, last_track)?;
     entry += 1;
 
     for track in disc.tracks {
-        write_track(&mut ccd_write, entry, track.number as u8, &track)?;
+        write_track(
+            &mut ccd_write,
+            entry,
+            Pointer::Track(track.number as u8),
+            &track,
+        )?;
         entry += 1;
     }
 
