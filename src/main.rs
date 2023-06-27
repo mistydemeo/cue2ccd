@@ -3,7 +3,7 @@ use std::io::{self, Write};
 use std::path::Path;
 use std::process::exit;
 
-use cdrom::Disc;
+use cdrom::{Disc, TrackMode};
 use clap::Parser;
 use cue::cd::CD;
 use cue::track::Track;
@@ -46,7 +46,7 @@ fn write_track(
     pointer: u8,
     track: &cdrom::Track,
 ) -> io::Result<()> {
-    write!(writer, "[Entry {}]\n", track.number)?;
+    write!(writer, "[Entry {}]\n", entry)?;
     write!(writer, "Session=1\n")?;
     // Pointer is either a track number from 1 to 99, *or* it's a control
     // code. Valid control codes according to the spec are:
@@ -54,7 +54,7 @@ fn write_track(
     // A1 - P-MIN field indicates the last information track, and P-SEC/P-FRAC are zero
     // A2 - P-MIN field indicates the start of the leadout, and P-SEC/P-FRAC are zero
     // For more detail, see section 22.3.4.2 of ECMA-130.
-    write!(writer, "Point={:02x}\n", pointer)?;
+    write!(writer, "Point=0x{:02x}\n", pointer)?;
 
     // Next, based on that value, we need to determine how to set M/S/F.
     // They might not actually be the real timekeeping info, based on the above.
@@ -72,6 +72,17 @@ fn write_track(
     }
 
     write!(writer, "ADR=0x01\n")?;
+    // Control field. This is a 4-bit value defining the track type.
+    // There are more settings, but we only set these two.
+    // See section 22.3.1 of ECMA-130.
+    let control = if let TrackMode::Audio = track.mode {
+        // Audio track, all bits 0
+        0
+    } else {
+        // Data with copy flag set - 0100
+        4
+    };
+    write!(writer, "Control=0x{:02x}\n", control)?;
     // Yes, this is hardcodable despite what it looks like
     write!(writer, "TrackNo=0\n")?;
     // Despite the A-MIN/SEC/FRAC values in the subchannel always containing
@@ -79,7 +90,6 @@ fn write_track(
     write!(writer, "AMin=0\n")?;
     write!(writer, "ASec=0\n")?;
     write!(writer, "AFrame=0\n")?;
-    write!(writer, "Control=0x%02x\n")?;
     // Should probably be calculated based on the pregap
     write!(writer, "ALBA=-150\n")?;
     write!(writer, "Zero=0\n")?;
@@ -87,7 +97,7 @@ fn write_track(
     write!(writer, "PMin={}\n", m)?;
     write!(writer, "PSec={}\n", s)?;
     write!(writer, "PFrame={}\n", f)?;
-    write!(writer, "PLBA={}\n", track.start)?;
+    write!(writer, "PLBA={}\n\n", track.start)?;
 
     Ok(())
 }
@@ -139,7 +149,10 @@ fn main() -> io::Result<()> {
     // We always write out exactly 3 TOC entries more than the number of tracks.
     // That accounts for extra TOC entries such as the leadout.
     write!(&mut ccd_write, "TocEntries={}\n", disc.tracks.len() + 3)?;
+    // Multisession cuesheets are rare, we're pretending they don't exist
+    write!(&mut ccd_write, "Sessions=1\n")?;
     write!(&mut ccd_write, "DataTracksScrambled=0\n")?;
+    // CD-TEXT not yet supported
     write!(&mut ccd_write, "CDTextLength=0\n\n")?;
 
     write!(&mut ccd_write, "[Session 1]\n")?;
