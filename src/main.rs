@@ -70,15 +70,15 @@ fn write_track(
     // in a plaintext INI format.
     // For some more information keys and their values, see
     // https://psx-spx.consoledev.net/cdromdrive/
-    write!(writer, "[Entry {}]\n", entry)?;
-    write!(writer, "Session=1\n")?;
+    writeln!(writer, "[Entry {}]", entry)?;
+    writeln!(writer, "Session=1")?;
     // Pointer is either a track number from 1 to 99, *or* it's a control
     // code. Valid control codes according to the spec are:
     // A0 - P-MIN field indicates the first information track, and P-SEC/P-FRAC are zero
     // A1 - P-MIN field indicates the last information track, and P-SEC/P-FRAC are zero
     // A2 - P-MIN field indicates the start of the leadout, and P-SEC/P-FRAC are zero
     // For more detail, see section 22.3.4.2 of ECMA-130.
-    write!(writer, "Point=0x{:02x}\n", pointer.as_u8())?;
+    writeln!(writer, "Point=0x{:02x}", pointer.as_u8())?;
 
     // Next, based on that value, we need to determine how to set M/S/F.
     // They might not actually be the real timekeeping info, based on the above.
@@ -107,7 +107,7 @@ fn write_track(
         }
     }
 
-    write!(writer, "ADR=0x01\n")?;
+    writeln!(writer, "ADR=0x01")?;
     // Control field. This is a 4-bit value defining the track type.
     // There are more settings, but we only set these two.
     // See section 22.3.1 of ECMA-130.
@@ -118,28 +118,28 @@ fn write_track(
         // Data with copy flag set - 0100
         4
     };
-    write!(writer, "Control=0x{:02x}\n", control)?;
+    writeln!(writer, "Control=0x{:02x}", control)?;
     // Yes, this is hardcodable despite what it looks like
-    write!(writer, "TrackNo=0\n")?;
+    writeln!(writer, "TrackNo=0")?;
     // Despite the A-MIN/SEC/FRAC values in the subchannel always containing
     // an absolute timestamp, here they're always zeroed out.
-    write!(writer, "AMin=0\n")?;
-    write!(writer, "ASec=0\n")?;
-    write!(writer, "AFrame=0\n")?;
+    writeln!(writer, "AMin=0")?;
+    writeln!(writer, "ASec=0")?;
+    writeln!(writer, "AFrame=0")?;
     // Should probably be calculated based on the pregap
-    write!(writer, "ALBA=-150\n")?;
-    write!(writer, "Zero=0\n")?;
+    writeln!(writer, "ALBA=-150")?;
+    writeln!(writer, "Zero=0")?;
     // These three next values are the absolute MIN/SEC/FRAC
-    write!(writer, "PMin={}\n", m)?;
-    write!(writer, "PSec={}\n", s)?;
-    write!(writer, "PFrame={}\n", f)?;
+    writeln!(writer, "PMin={}", m)?;
+    writeln!(writer, "PSec={}", s)?;
+    writeln!(writer, "PFrame={}", f)?;
     write!(writer, "PLBA={}\n\n", lba)?;
 
     Ok(())
 }
 
 fn write_track_entry(writer: &mut File, track: &cdrom::Track) -> io::Result<()> {
-    write!(writer, "[TRACK {}]\n", track.number)?;
+    writeln!(writer, "[TRACK {}]", track.number)?;
     let mode = match track.mode {
         TrackMode::Audio => 0,
         TrackMode::Mode1 | TrackMode::Mode1Raw => 1,
@@ -149,10 +149,10 @@ fn write_track_entry(writer: &mut File, track: &cdrom::Track) -> io::Result<()> 
         | TrackMode::Mode2Form2
         | TrackMode::Mode2FormMix => 2,
     };
-    write!(writer, "MODE={}\n", mode)?;
+    writeln!(writer, "MODE={}", mode)?;
 
     for index in &track.indices {
-        write!(writer, "INDEX {}={}\n", index.number, index.start)?;
+        writeln!(writer, "INDEX {}={}", index.number, index.start)?;
     }
 
     Ok(())
@@ -198,21 +198,21 @@ fn main() -> io::Result<()> {
     // Note that many values here are hardcoded, because we're not doing a
     // full implementation of every CD feature, even if they were in the
     // source BIN/CUE.
-    write!(&mut ccd_write, "[CloneCD]\n")?;
+    writeln!(&mut ccd_write, "[CloneCD]")?;
     write!(&mut ccd_write, "Version=3\n\n")?;
 
-    write!(&mut ccd_write, "[Disc]\n")?;
+    writeln!(&mut ccd_write, "[Disc]")?;
     // We always write out exactly 3 TOC entries more than the number of tracks.
     // That accounts for extra TOC entries such as the leadout.
-    write!(&mut ccd_write, "TocEntries={}\n", disc.tracks.len() + 3)?;
+    writeln!(&mut ccd_write, "TocEntries={}", disc.tracks.len() + 3)?;
     // Multisession cuesheets are rare, we're pretending they don't exist
-    write!(&mut ccd_write, "Sessions=1\n")?;
-    write!(&mut ccd_write, "DataTracksScrambled=0\n")?;
+    writeln!(&mut ccd_write, "Sessions=1")?;
+    writeln!(&mut ccd_write, "DataTracksScrambled=0")?;
     // CD-TEXT not yet supported
     write!(&mut ccd_write, "CDTextLength=0\n\n")?;
 
-    write!(&mut ccd_write, "[Session 1]\n")?;
-    write!(&mut ccd_write, "PreGapMode=2\n")?;
+    writeln!(&mut ccd_write, "[Session 1]")?;
+    writeln!(&mut ccd_write, "PreGapMode=2")?;
     write!(&mut ccd_write, "PreGapSubC=0\n\n")?;
 
     // To match other tools, we write track 1 and the final track before
