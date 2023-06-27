@@ -64,6 +64,7 @@ fn write_track(
     entry: usize,
     pointer: Pointer,
     track: &cdrom::Track,
+    total_sectors: i64,
 ) -> io::Result<()> {
     write!(writer, "[Entry {}]\n", entry)?;
     write!(writer, "Session=1\n")?;
@@ -77,17 +78,29 @@ fn write_track(
 
     // Next, based on that value, we need to determine how to set M/S/F.
     // They might not actually be the real timekeeping info, based on the above.
+    let lba;
     let m;
     let s;
     let f;
     match pointer {
         Pointer::FirstTrack | Pointer::LastTrack => {
+            lba = track.number as i64 * 4500 - 150;
             m = track.number as i64;
             s = 0;
             f = 0;
         }
-        Pointer::LeadOut => (m, s, f) = lba_to_msf(track.start + track.length + 150),
-        _ => (m, s, f) = lba_to_msf(track.start),
+        Pointer::LeadOut => {
+            lba = total_sectors;
+            // M/S/F differs from LBA by pregap size
+            // Right now we're hardcoding that.
+            // Should un-hardcode this later, but this also smells
+            // suspiciously like an off-by-150 error on one side?
+            (m, s, f) = lba_to_msf(lba + 150);
+        }
+        _ => {
+            lba = track.start;
+            (m, s, f) = lba_to_msf(track.start + 150);
+        }
     }
 
     write!(writer, "ADR=0x01\n")?;
@@ -116,7 +129,7 @@ fn write_track(
     write!(writer, "PMin={}\n", m)?;
     write!(writer, "PSec={}\n", s)?;
     write!(writer, "PFrame={}\n", f)?;
-    write!(writer, "PLBA={}\n\n", track.start)?;
+    write!(writer, "PLBA={}\n\n", lba)?;
 
     Ok(())
 }
@@ -209,11 +222,29 @@ fn main() -> io::Result<()> {
 
     let mut entry = 0;
 
-    write_track(&mut ccd_write, entry, Pointer::FirstTrack, first_track)?;
+    write_track(
+        &mut ccd_write,
+        entry,
+        Pointer::FirstTrack,
+        first_track,
+        disc.sector_count,
+    )?;
     entry += 1;
-    write_track(&mut ccd_write, entry, Pointer::LastTrack, last_track)?;
+    write_track(
+        &mut ccd_write,
+        entry,
+        Pointer::LastTrack,
+        last_track,
+        disc.sector_count,
+    )?;
     entry += 1;
-    write_track(&mut ccd_write, entry, Pointer::LeadOut, last_track)?;
+    write_track(
+        &mut ccd_write,
+        entry,
+        Pointer::LeadOut,
+        last_track,
+        disc.sector_count,
+    )?;
     entry += 1;
 
     for track in &disc.tracks {
@@ -222,6 +253,7 @@ fn main() -> io::Result<()> {
             entry,
             Pointer::Track(track.number as u8),
             track,
+            disc.sector_count,
         )?;
         entry += 1;
     }
