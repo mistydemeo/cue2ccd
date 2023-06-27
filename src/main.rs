@@ -66,6 +66,10 @@ fn write_track(
     track: &cdrom::Track,
     total_sectors: i64,
 ) -> io::Result<()> {
+    // The data in a CCD file is a low-level representation of the disc's leadin
+    // in a plaintext INI format.
+    // For some more information keys and their values, see
+    // https://psx-spx.consoledev.net/cdromdrive/
     write!(writer, "[Entry {}]\n", entry)?;
     write!(writer, "Session=1\n")?;
     // Pointer is either a track number from 1 to 99, *or* it's a control
