@@ -121,6 +121,26 @@ fn write_track(
     Ok(())
 }
 
+fn write_track_entry(writer: &mut File, track: &cdrom::Track) -> io::Result<()> {
+    write!(writer, "[TRACK {}]\n", track.number)?;
+    let mode = match track.mode {
+        TrackMode::Audio => 0,
+        TrackMode::Mode1 | TrackMode::Mode1Raw => 1,
+        TrackMode::Mode2
+        | TrackMode::Mode2Raw
+        | TrackMode::Mode2Form1
+        | TrackMode::Mode2Form2
+        | TrackMode::Mode2FormMix => 2,
+    };
+    write!(writer, "MODE={}\n", mode)?;
+
+    for index in &track.indices {
+        write!(writer, "INDEX {}={}\n", index.number, index.start)?;
+    }
+
+    Ok(())
+}
+
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
@@ -196,14 +216,20 @@ fn main() -> io::Result<()> {
     write_track(&mut ccd_write, entry, Pointer::LeadOut, last_track)?;
     entry += 1;
 
-    for track in disc.tracks {
+    for track in &disc.tracks {
         write_track(
             &mut ccd_write,
             entry,
             Pointer::Track(track.number as u8),
-            &track,
+            track,
         )?;
         entry += 1;
+    }
+
+    // Next, we want to handle writing out the track index.
+    // This is a vaguely cuesheet-like format that's optional.
+    for track in &disc.tracks {
+        write_track_entry(&mut ccd_write, track)?;
     }
 
     Ok(())
