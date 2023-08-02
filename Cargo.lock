@@ -197,6 +197,7 @@ dependencies = [
  "clap",
  "cue",
  "miette",
+ "thiserror",
 ]
 
 [[package]]

@@ -9,6 +9,7 @@ edition = "2021"
 clap = { version = "4.3.4", features = ["derive"] }
 cue = "2.0.0"
 miette = { version = "5.6.0", features = ["fancy"] }
+thiserror = "1.0.40"
 
 [dependencies.cdrom]
 path = "cdrom"
