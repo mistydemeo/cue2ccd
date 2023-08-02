@@ -7,7 +7,16 @@ use cdrom::Disc;
 use clap::Parser;
 use cue::cd::CD;
 use cue::track::Track;
-use miette::{IntoDiagnostic, Result};
+use miette::{Diagnostic, IntoDiagnostic, Result};
+use thiserror::Error;
+
+#[derive(Error, Debug, Diagnostic)]
+#[error("This tool currently only supports single-file BIN/CUE images.")]
+#[diagnostic(help("Please specify a cuesheet with a single source."))]
+pub struct MultipleFilesError {
+    #[source_code]
+    cue: String,
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -47,8 +56,7 @@ fn main() -> Result<()> {
 
     let tracks = cd.tracks();
     if has_multiple_files(tracks) {
-        println!("This tool currently only supports single-file BIN/CUE images.");
-        exit(1);
+        return Err(MultipleFilesError { cue: args.filename })?;
     }
     let fname = cd.tracks().first().unwrap().get_filename();
     let file = root.join(fname);
