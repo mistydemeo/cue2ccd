@@ -1,2 +1,4 @@
 /.cargo
 /target
+/testdata/bincue/*.ccd
+/testdata/bincue/*.sub
