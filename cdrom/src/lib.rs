@@ -406,6 +406,9 @@ impl Sector {
             self.index.number,
             self.track.mode,
         );
+        // It's valid to write these as 0 if not used, in that nothing reading this seems to
+        // complain, but is it *correct*? At least one real disc image uses 0xFF instead;
+        // check more and validate this.
         let mut rest = vec![0; 72];
 
         let mut out = vec![];
