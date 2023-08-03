@@ -158,16 +158,7 @@ impl Disc {
 
     fn write_track_entry(&self, writer: &mut File, track: &Track) -> io::Result<()> {
         writeln!(writer, "[TRACK {}]", track.number)?;
-        let mode = match track.mode {
-            TrackMode::Audio => 0,
-            TrackMode::Mode1 | TrackMode::Mode1Raw => 1,
-            TrackMode::Mode2
-            | TrackMode::Mode2Raw
-            | TrackMode::Mode2Form1
-            | TrackMode::Mode2Form2
-            | TrackMode::Mode2FormMix => 2,
-        };
-        writeln!(writer, "MODE={}", mode)?;
+        writeln!(writer, "MODE={}", track.mode.as_u8())?;
 
         for index in &track.indices {
             writeln!(writer, "INDEX {}={}", index.number, index.start)?;
@@ -326,6 +317,18 @@ impl TrackMode {
             track::TrackMode::Mode2Form2 => TrackMode::Mode2Form2,
             track::TrackMode::Mode2FormMix => TrackMode::Mode2FormMix,
             track::TrackMode::Mode2Raw => TrackMode::Mode2Raw,
+        }
+    }
+
+    pub fn as_u8(&self) -> u8 {
+        match self {
+            TrackMode::Audio => 0,
+            TrackMode::Mode1 | TrackMode::Mode1Raw => 1,
+            TrackMode::Mode2
+            | TrackMode::Mode2Raw
+            | TrackMode::Mode2Form1
+            | TrackMode::Mode2Form2
+            | TrackMode::Mode2FormMix => 2,
         }
     }
 }
