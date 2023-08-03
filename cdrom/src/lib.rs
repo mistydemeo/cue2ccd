@@ -55,6 +55,9 @@ impl Disc {
         // even in a mixed-mode disc, this is only specified once.
         // Is it possible for this to differ from the type of the first track? Unclear.
         writeln!(writer, "PreGapMode={}", first_track.mode.as_u8())?;
+        // Appears to be subchannel for pregap according to Aaru:
+        // https://github.com/aaru-dps/Aaru/blob/5410ae5e74f2177887cd1e0e1866d8d55cf244d9/Aaru.Images/CloneCD/Constants.cs#L50
+        // Unclear what the "correct" value is, but safe to hardcode.
         write!(writer, "PreGapSubC=0\n\n")?;
 
         let mut entry = 0;
