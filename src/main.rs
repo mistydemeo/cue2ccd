@@ -19,11 +19,11 @@ enum Cue2CCDError {
     },
 
     #[error("A data file specified in the cuesheet is missing.")]
-    #[diagnostic(help("Missing file: {missing_file}"))]
+    #[diagnostic(help("Missing file: {}", missing_file.display()))]
     MissingFileError {
         #[source_code]
         cue: String,
-        missing_file: String,
+        missing_file: std::path::PathBuf,
     },
 
     #[error(transparent)]
@@ -83,7 +83,7 @@ fn work() -> Result<(), Cue2CCDError> {
     if !file.is_file() {
         return Err(Cue2CCDError::MissingFileError {
             cue: args.filename,
-            missing_file: file.to_string_lossy().to_string(),
+            missing_file: file,
         })?;
     }
     let filesize = file.metadata()?.len();
