@@ -6,7 +6,7 @@ use cdrom::Disc;
 use clap::Parser;
 use cue::cd::CD;
 use cue::track::Track;
-use miette::{Diagnostic, IntoDiagnostic, Result};
+use miette::{Diagnostic, Result};
 use thiserror::Error;
 
 #[derive(Error, Debug, Diagnostic)]
@@ -25,6 +25,12 @@ enum Cue2CCDError {
         cue: String,
         missing_file: String,
     },
+
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Cue(#[from] std::ffi::NulError),
 }
 
 #[derive(Parser, Debug)]
@@ -55,13 +61,18 @@ fn sector_count(size: u64, sector_size: u64) -> u64 {
     size / sector_size
 }
 
-fn main() -> Result<()> {
+fn main() -> Result<(), miette::Report> {
+    work()?;
+    Ok(())
+}
+
+fn work() -> Result<(), Cue2CCDError> {
     let args = Args::parse();
 
     let root = Path::new(&args.filename).parent().unwrap();
-    let cue_sheet = std::fs::read_to_string(&args.filename).into_diagnostic()?;
+    let cue_sheet = std::fs::read_to_string(&args.filename)?;
 
-    let cd = CD::parse(cue_sheet).into_diagnostic()?;
+    let cd = CD::parse(cue_sheet)?;
 
     let tracks = cd.tracks();
     if has_multiple_files(tracks) {
@@ -75,24 +86,22 @@ fn main() -> Result<()> {
             missing_file: file.to_string_lossy().to_string(),
         })?;
     }
-    let filesize = file.metadata().into_diagnostic()?.len();
+    let filesize = file.metadata()?.len();
     // TODO deal with non-2352 byte per sector images (treat as an error?)
     let sectors = sector_count(filesize, 2352);
     println!("Image is {} sectors long", sectors);
 
     let sub_target = file.with_extension("sub");
-    let mut sub_write = File::create(sub_target).into_diagnostic()?;
+    let mut sub_write = File::create(sub_target)?;
 
     let disc = Disc::from_cuesheet(cd, sectors as i64);
     for sector in disc.sectors() {
-        sub_write
-            .write_all(&sector.generate_subchannel())
-            .into_diagnostic()?;
+        sub_write.write_all(&sector.generate_subchannel())?;
     }
 
     let ccd_target = file.with_extension("ccd");
-    let mut ccd_write = File::create(ccd_target).into_diagnostic()?;
-    disc.write_ccd(&mut ccd_write).into_diagnostic()?;
+    let mut ccd_write = File::create(ccd_target)?;
+    disc.write_ccd(&mut ccd_write)?;
 
     Ok(())
 }
