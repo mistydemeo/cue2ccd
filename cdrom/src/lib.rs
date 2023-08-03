@@ -406,9 +406,9 @@ impl Sector {
             self.index.number,
             self.track.mode,
         );
-        // It's valid to write these as 0 if not used, in that nothing reading this seems to
-        // complain, but is it *correct*? At least one real disc image uses 0xFF instead;
-        // check more and validate this.
+        // The vast majority of real discs write their unused R-W fields as 0s,
+        // but at least one real disc used FFs instead. We'll side with the
+        // majority and use 0.
         let mut rest = vec![0; 72];
 
         let mut out = vec![];
