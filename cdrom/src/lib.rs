@@ -41,10 +41,6 @@ impl Disc {
         // CD-TEXT not yet supported
         write!(writer, "CDTextLength=0\n\n")?;
 
-        writeln!(writer, "[Session 1]")?;
-        writeln!(writer, "PreGapMode=2")?;
-        write!(writer, "PreGapSubC=0\n\n")?;
-
         // To match other tools, we write track 1 and the final track before
         // going back to write the other tracks.
         let first_track = &self.tracks[0];
@@ -53,6 +49,13 @@ impl Disc {
         } else {
             first_track
         };
+
+        writeln!(writer, "[Session 1]")?;
+        // Appears to be the type of the first track;
+        // even in a mixed-mode disc, this is only specified once.
+        // Is it possible for this to differ from the type of the first track? Unclear.
+        writeln!(writer, "PreGapMode={}", first_track.mode.as_u8())?;
+        write!(writer, "PreGapSubC=0\n\n")?;
 
         let mut entry = 0;
 
