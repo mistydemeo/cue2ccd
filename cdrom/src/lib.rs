@@ -135,6 +135,9 @@ impl Disc {
         // Control field. This is a 4-bit value defining the track type.
         // There are more settings, but we only set these two.
         // See section 22.3.1 of ECMA-130.
+        // TODO: Ensure this control code is correct for leadin and leadout.
+        // One real disc had 0 for the leadin when the first track was data,
+        // while other discs use 4. 4 is *probably* safe.
         let control = if let TrackMode::Audio = track.mode {
             // Audio track, all bits 0
             0
