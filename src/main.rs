@@ -12,7 +12,7 @@ use thiserror::Error;
 #[derive(Error, Debug, Diagnostic)]
 enum Cue2CCDError {
     #[error("This tool currently only supports single-file BIN/CUE images.")]
-    #[diagnostic(help("Please specify a cuesheet with a single source."))]
+    #[diagnostic(help("Please specify a cuesheet with a single BIN file. You can convert a multi-track disc image into a single track image using chdman or binmerge."))]
     MultipleFilesError {},
 
     #[error("A data file specified in the cuesheet is missing.")]
@@ -91,6 +91,15 @@ fn work() -> Result<(), Cue2CCDError> {
     let cd = CD::parse(cue_sheet)?;
 
     let tracks = cd.tracks();
+
+    // Reconstructing a new index would be easier if we could produce a new
+    // cuesheet, or by refactoring the construction code in the cdrom crate to
+    // be a bit less dependent on a cuesheet. This is a nice stretch goal for
+    // the future. In the meantime, users can consolidate their multi-track
+    // bin/cues using chdman or something else.
+    // Note that while we don't actually read the data file ourself, consumers
+    // of the CUE/SUB files produced by this tool won't be able to understand
+    // split images.
     if has_multiple_files(&tracks) {
         return Err(Cue2CCDError::MultipleFilesError {})?;
     }
