@@ -445,6 +445,9 @@ impl Sector {
         // * 3 - International Standard Recording Code (ISRC)
         // In practice, we're always generating mode 1
         // every sector so we'll hardcode this.
+        // Note that the cuesheet *can* contain the catalog number,
+        // so it'd be possible for us to set this, but libcue doesn't
+        // expose a getter for that; it's simpler just to skip it.
         q[0] |= 1 << 0;
         // OK, it's data time! This is the next 9 bytes.
         // This contains timing info for the current track.
