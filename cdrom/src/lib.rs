@@ -204,7 +204,7 @@ impl<'a> SectorIterator<'a> {
                         // Convenience for indexing relative to the start of the disc,
                         // rather than the start of the disc image.
                         // Yes, it means the first sector isn't sector 1.
-                        absolute_start: sector + 151,
+                        absolute_start: sector + 150,
                         relative_position,
                         size: 2352, // TODO un-hardcode this
                         // Worry about lifetimes later, this is small anyway
