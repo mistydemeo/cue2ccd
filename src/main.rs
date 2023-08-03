@@ -13,18 +13,11 @@ use thiserror::Error;
 enum Cue2CCDError {
     #[error("This tool currently only supports single-file BIN/CUE images.")]
     #[diagnostic(help("Please specify a cuesheet with a single source."))]
-    MultipleFilesError {
-        #[source_code]
-        cue: String,
-    },
+    MultipleFilesError {},
 
     #[error("A data file specified in the cuesheet is missing.")]
     #[diagnostic(help("Missing file: {}", missing_file.display()))]
-    MissingFileError {
-        #[source_code]
-        cue: String,
-        missing_file: std::path::PathBuf,
-    },
+    MissingFileError { missing_file: std::path::PathBuf },
 
     #[error(transparent)]
     IO(#[from] std::io::Error),
@@ -76,15 +69,12 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let tracks = cd.tracks();
     if has_multiple_files(tracks) {
-        return Err(Cue2CCDError::MultipleFilesError { cue: args.filename })?;
+        return Err(Cue2CCDError::MultipleFilesError {})?;
     }
     let fname = cd.tracks().first().unwrap().get_filename();
     let file = root.join(fname);
     if !file.is_file() {
-        return Err(Cue2CCDError::MissingFileError {
-            cue: args.filename,
-            missing_file: file,
-        })?;
+        return Err(Cue2CCDError::MissingFileError { missing_file: file })?;
     }
     let filesize = file.metadata()?.len();
     // TODO deal with non-2352 byte per sector images (treat as an error?)
