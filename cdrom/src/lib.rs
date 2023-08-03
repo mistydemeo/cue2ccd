@@ -49,7 +49,7 @@ impl Disc {
         // going back to write the other tracks.
         let first_track = &self.tracks[0];
         let last_track = if self.tracks.len() > 1 {
-            &self.tracks[self.tracks.len()]
+            &self.tracks[self.tracks.len() - 1]
         } else {
             first_track
         };
