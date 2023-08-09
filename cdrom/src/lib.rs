@@ -368,8 +368,8 @@ pub struct Sector {
     pub index: Index,
 }
 
-fn bcd(dec: i64) -> i64 {
-    ((dec / 10) << 4) | (dec % 10)
+fn bcd(dec: i64) -> u8 {
+    (((dec / 10) << 4) | (dec % 10)) as u8
 }
 
 impl Sector {
@@ -454,13 +454,13 @@ impl Sector {
         q[0] |= 1 << 0;
         // OK, it's data time! This is the next 9 bytes.
         // This contains timing info for the current track.
-        q[1] = track;
+        q[1] = bcd(track as i64);
 
         // Next is the index. While it supports values up to 99,
         // usually only two values are seen:
         // 00 - Pregap or postgap
         // 01 - First index within the track, or leadout
-        q[2] = index;
+        q[2] = bcd(index as i64);
 
         // The next three fields, MIN, SEC, and FRAC, are the
         // running time within each index.
