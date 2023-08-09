@@ -470,12 +470,21 @@ impl Sector {
         // pregap duration and counts up to 0.
         // In the actual content, this starts at 0 and
         // counts up.
+        //
+        // Since bcd doens't represent negative numbers, we
+        // re-negate this; we start at the pregap duration and
+        // count down to 0.
+        let relative_sector_count = if 0 > relative_sector {
+            0 - relative_sector
+        } else {
+            relative_sector
+        };
         // MIN
-        q[3] = bcd(relative_sector / 4500) as u8;
+        q[3] = bcd(relative_sector_count / 4500) as u8;
         // SEC
-        q[4] = bcd((relative_sector / 75) % 60) as u8;
+        q[4] = bcd((relative_sector_count / 75) % 60) as u8;
         // FRAC
-        q[5] = bcd(relative_sector % 75) as u8;
+        q[5] = bcd(relative_sector_count % 75) as u8;
         // Next byte is always zero
         q[6] = 0;
         // The next three bytes provide an absolute timestamp,
