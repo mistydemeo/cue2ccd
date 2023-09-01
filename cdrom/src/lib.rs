@@ -480,20 +480,20 @@ impl Sector {
             relative_sector
         };
         // MIN
-        q[3] = bcd(relative_sector_count / 4500) as u8;
+        q[3] = bcd(relative_sector_count / 4500);
         // SEC
-        q[4] = bcd((relative_sector_count / 75) % 60) as u8;
+        q[4] = bcd((relative_sector_count / 75) % 60);
         // FRAC
-        q[5] = bcd(relative_sector_count % 75) as u8;
+        q[5] = bcd(relative_sector_count % 75);
         // Next byte is always zero
         q[6] = 0;
         // The next three bytes provide an absolute timestamp,
         // rather than a timestamp within the current track.
         // These three fields, A-MIN, A-SEC, and A-FRAC, are
         // stored the same way as the relative timestamps.
-        q[7] = bcd(absolute_sector / 4500) as u8;
-        q[8] = bcd((absolute_sector / 75) % 60) as u8;
-        q[9] = bcd(absolute_sector % 75) as u8;
+        q[7] = bcd(absolute_sector / 4500);
+        q[8] = bcd((absolute_sector / 75) % 60);
+        q[9] = bcd(absolute_sector % 75);
         // The last two bytes contain a CRC of the main data.
         let crc = crc16(&q[0..10], CRC16_INITIAL_CRC);
         q[10] = ((crc >> 8) & 0xFF) as u8;
