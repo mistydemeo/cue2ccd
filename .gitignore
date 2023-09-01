@@ -1,4 +1,6 @@
 /.cargo
 /target
-/testdata/bincue/*.ccd
-/testdata/bincue/*.sub
+/testdata/onetrack/bincue/*.ccd
+/testdata/onetrack/bincue/*.sub
+/testdata/dataplusaudio/bincue/*.ccd
+/testdata/dataplusaudio/bincue/*.sub
