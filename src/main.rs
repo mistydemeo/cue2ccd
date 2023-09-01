@@ -43,6 +43,8 @@ enum Cue2CCDError {
 )]
 struct Args {
     filename: String,
+    #[arg(long, default_value_t = false)]
+    skip_img_copy: bool,
 }
 
 fn has_multiple_files(tracks: &[Track]) -> bool {
@@ -125,6 +127,16 @@ fn work() -> Result<(), Cue2CCDError> {
     let ccd_target = file.with_extension("ccd");
     let mut ccd_write = File::create(ccd_target)?;
     disc.write_ccd(&mut ccd_write)?;
+
+    if !args.skip_img_copy {
+        let img_target = file.with_extension("img");
+        if img_target.exists() {
+            eprintln!(
+                "A .img file at path {} already exists; skipping copy",
+                img_target.as_path().display()
+            );
+        }
+    }
 
     Ok(())
 }
