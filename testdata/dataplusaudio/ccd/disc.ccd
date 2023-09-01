@@ -1,0 +1,120 @@
+[CloneCD]
+Version=3
+
+[Disc]
+TocEntries=6
+Sessions=1
+DataTracksScrambled=0
+CDTextLength=0
+
+[Session 1]
+PreGapMode=1
+PreGapSubC=0
+
+[Entry 0]
+Session=1
+Point=0xa0
+ADR=0x01
+Control=0x04
+TrackNo=0
+AMin=0
+ASec=0
+AFrame=0
+ALBA=-150
+Zero=0
+PMin=1
+PSec=0
+PFrame=0
+PLBA=4350
+
+[Entry 1]
+Session=1
+Point=0xa1
+ADR=0x01
+Control=0x00
+TrackNo=0
+AMin=0
+ASec=0
+AFrame=0
+ALBA=-150
+Zero=0
+PMin=3
+PSec=0
+PFrame=0
+PLBA=13350
+
+[Entry 2]
+Session=1
+Point=0xa2
+ADR=0x01
+Control=0x00
+TrackNo=0
+AMin=0
+ASec=0
+AFrame=0
+ALBA=-150
+Zero=0
+PMin=0
+PSec=12
+PFrame=16
+PLBA=766
+
+[Entry 3]
+Session=1
+Point=0x01
+ADR=0x01
+Control=0x04
+TrackNo=0
+AMin=0
+ASec=0
+AFrame=0
+ALBA=-150
+Zero=0
+PMin=0
+PSec=2
+PFrame=0
+PLBA=0
+
+[Entry 4]
+Session=1
+Point=0x02
+ADR=0x01
+Control=0x00
+TrackNo=0
+AMin=0
+ASec=0
+AFrame=0
+ALBA=-150
+Zero=0
+PMin=0
+PSec=8
+PFrame=16
+PLBA=466
+
+[Entry 5]
+Session=1
+Point=0x03
+ADR=0x01
+Control=0x00
+TrackNo=0
+AMin=0
+ASec=0
+AFrame=0
+ALBA=-150
+Zero=0
+PMin=0
+PSec=11
+PFrame=16
+PLBA=691
+
+[TRACK 1]
+MODE=1
+INDEX 1=0
+[TRACK 2]
+MODE=0
+INDEX 0=316
+INDEX 1=466
+[TRACK 3]
+MODE=0
+INDEX 0=541
+INDEX 1=691
