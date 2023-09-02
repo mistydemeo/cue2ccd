@@ -1,0 +1,8 @@
+{
+  "build": {
+    "path_prefix": "cue2ccd"
+  },
+  "styles": {
+    "theme": "axolight"
+  }
+}
