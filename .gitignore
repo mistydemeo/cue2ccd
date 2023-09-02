@@ -1,8 +1,10 @@
 /.cargo
 /target
 /testdata/onetrack/bincue/*.ccd
+/testdata/onetrack/bincue/*.img
 /testdata/onetrack/bincue/*.sub
 /testdata/dataplusaudio/bincue/*.ccd
+/testdata/dataplusaudio/bincue/*.img
 /testdata/dataplusaudio/bincue/*.sub
 # uncommitted local test data
 /*.7z
