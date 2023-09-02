@@ -1,7 +1,6 @@
-use std::fs::File;
+use std::fs::{copy, File};
 use std::io::Write;
 use std::path::Path;
-use std::process::exit;
 
 use cdrom::Disc;
 use clap::Parser;
@@ -155,7 +154,9 @@ fn work() -> Result<(), Cue2CCDError> {
                 "A .img file at path {} already exists; skipping copy",
                 img_target.as_path().display()
             );
+            return Ok(());
         }
+        copy(file, img_target)?;
     }
 
     Ok(())
