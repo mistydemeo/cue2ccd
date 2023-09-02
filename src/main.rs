@@ -27,6 +27,10 @@ enum Cue2CCDError {
     #[diagnostic(help("cuesheets containing ISOs or other non-raw data are not compatible."))]
     CookedData {},
 
+    #[error("The provided disc image has an invalid file size")]
+    #[diagnostic(help("Check if the .bin for your disc image is corrupted."))]
+    InvalidFilesizeError {},
+
     #[error(transparent)]
     IO(#[from] std::io::Error),
 
@@ -74,9 +78,11 @@ fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
     Ok(())
 }
 
-// TODO handle incorrect sector sizes and remainders
-fn sector_count(size: u64, sector_size: u64) -> u64 {
-    size / sector_size
+fn sector_count(size: u64, sector_size: u64) -> Result<u64, Cue2CCDError> {
+    if size % sector_size != 0 {
+        return Err(Cue2CCDError::InvalidFilesizeError {});
+    }
+    Ok(size / sector_size)
 }
 
 fn main() -> Result<(), miette::Report> {
@@ -113,7 +119,7 @@ fn work() -> Result<(), Cue2CCDError> {
         return Err(Cue2CCDError::MissingFileError { missing_file: file })?;
     }
     let filesize = file.metadata()?.len();
-    let sectors = sector_count(filesize, 2352);
+    let sectors = sector_count(filesize, 2352)?;
     println!("Image is {} sectors long", sectors);
 
     let sub_target = file.with_extension("sub");
