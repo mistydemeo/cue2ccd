@@ -1,0 +1,45 @@
+# The "Normal" CI for tests and linters and whatnot
+name: Rust CI
+
+# Ci should be run on...
+on:
+  # Every pull request (will need approval for new contributors)
+  pull_request:
+  # Every push to...
+  push:
+    branches:
+      # The main branch
+      - main
+
+# We want all these checks to fail if they spit out warnings
+env:
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  # Check that rustfmt is a no-op
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  # Check that clippy is appeased
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: swatinem/rust-cache@v2
+      - uses: actions-rs/clippy-check@v1
+        env:
+          PWD: ${{ env.GITHUB_WORKSPACE }}
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --workspace --tests --examples
