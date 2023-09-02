@@ -102,7 +102,7 @@ fn work() -> Result<(), Cue2CCDError> {
         path = p;
         output_path = Path::new(&path);
     } else {
-        output_path = root.clone();
+        output_path = root;
     }
     // Provides a pattern to build output filenames from
     let output_stem = output_path.join(Path::new(&args.filename).file_stem().unwrap());
