@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::process::exit;
 
 use cdrom::Disc;
 use clap::Parser;
@@ -49,6 +50,8 @@ struct Args {
     filename: String,
     #[arg(long, default_value_t = false)]
     skip_img_copy: bool,
+    #[arg(long)]
+    output_path: Option<String>,
 }
 
 fn has_multiple_files(tracks: &[Track]) -> bool {
@@ -94,6 +97,17 @@ fn work() -> Result<(), Cue2CCDError> {
     let args = Args::parse();
 
     let root = Path::new(&args.filename).parent().unwrap();
+    let path;
+    let output_path;
+    if let Some(p) = args.output_path {
+        path = p;
+        output_path = Path::new(&path);
+    } else {
+        output_path = root.clone();
+    }
+    // Provides a pattern to build output filenames from
+    let output_stem = output_path.join(Path::new(&args.filename).file_stem().unwrap());
+
     let cue_sheet = std::fs::read_to_string(&args.filename)?;
 
     let cd = CD::parse(cue_sheet)?;
@@ -122,7 +136,7 @@ fn work() -> Result<(), Cue2CCDError> {
     let sectors = sector_count(filesize, 2352)?;
     println!("Image is {} sectors long", sectors);
 
-    let sub_target = file.with_extension("sub");
+    let sub_target = output_stem.with_extension("sub");
     let mut sub_write = File::create(sub_target)?;
 
     let disc = Disc::from_cuesheet(cd, sectors as i64);
@@ -130,12 +144,12 @@ fn work() -> Result<(), Cue2CCDError> {
         sub_write.write_all(&sector.generate_subchannel())?;
     }
 
-    let ccd_target = file.with_extension("ccd");
+    let ccd_target = output_stem.with_extension("ccd");
     let mut ccd_write = File::create(ccd_target)?;
     disc.write_ccd(&mut ccd_write)?;
 
     if !args.skip_img_copy {
-        let img_target = file.with_extension("img");
+        let img_target = output_stem.with_extension("img");
         if img_target.exists() {
             eprintln!(
                 "A .img file at path {} already exists; skipping copy",
