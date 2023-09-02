@@ -4,3 +4,6 @@
 /testdata/onetrack/bincue/*.sub
 /testdata/dataplusaudio/bincue/*.ccd
 /testdata/dataplusaudio/bincue/*.sub
+# uncommitted local test data
+/*.7z
+/real_image
