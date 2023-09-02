@@ -30,6 +30,8 @@ jobs:
   # Check that clippy is appeased
   clippy:
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@master
