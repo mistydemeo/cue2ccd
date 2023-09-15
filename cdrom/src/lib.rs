@@ -521,3 +521,88 @@ impl Pointer {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs::{read_to_string, File};
+    use std::io::Read;
+    use std::{io::Write, path::PathBuf};
+
+    use cue::cd::CD;
+
+    use crate::Disc;
+
+    #[derive(Debug)]
+    struct TestPaths {
+        data_plus_audio_cue: PathBuf,
+        data_plus_audio_ccd: PathBuf,
+        one_track_cue: PathBuf,
+        one_track_ccd: PathBuf,
+    }
+
+    // Just hardcode these for now
+    fn get_filesize(source: &str) -> i64 {
+        match source {
+            "onetrack" => 316,
+            "dataplusaudio" => 766,
+            _ => 0,
+        }
+    }
+
+    fn get_test_paths() -> TestPaths {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("testdata");
+
+        TestPaths {
+            data_plus_audio_cue: root.join("dataplusaudio").join("bincue"),
+            data_plus_audio_ccd: root.join("dataplusaudio").join("ccd"),
+            one_track_cue: root.join("onetrack").join("bincue"),
+            one_track_ccd: root.join("onetrack").join("ccd"),
+        }
+    }
+
+    #[test]
+    fn test_onetrack_subchannel() {
+        let paths = get_test_paths();
+        let in_cue = paths.one_track_cue.join("basic_image.cue");
+        let cue_sheet = read_to_string(&in_cue).unwrap();
+
+        let cd = CD::parse(cue_sheet).unwrap();
+        let disc = Disc::from_cuesheet(cd, get_filesize("onetrack"));
+
+        let mut buf = vec![];
+        for sector in disc.sectors() {
+            buf.write_all(&sector.generate_subchannel()).unwrap();
+        }
+
+        let real_sub_path = paths.one_track_ccd.join("basic_image.sub");
+        let mut real_sub_file = File::open(&real_sub_path).unwrap();
+        let mut real_sub = vec![];
+        real_sub_file.read_to_end(&mut real_sub).unwrap();
+
+        assert_eq!(real_sub, buf);
+    }
+
+    #[test]
+    fn test_multitrack_subchannel() {
+        let paths = get_test_paths();
+        let in_cue = paths.data_plus_audio_cue.join("disc.cue");
+        let cue_sheet = read_to_string(&in_cue).unwrap();
+
+        let cd = CD::parse(cue_sheet).unwrap();
+        let disc = Disc::from_cuesheet(cd, get_filesize("dataplusaudio"));
+
+        let mut buf = vec![];
+        for sector in disc.sectors() {
+            buf.write_all(&sector.generate_subchannel()).unwrap();
+        }
+
+        let real_sub_path = paths.data_plus_audio_ccd.join("disc.sub");
+        let mut real_sub_file = File::open(&real_sub_path).unwrap();
+        let mut real_sub = vec![];
+        real_sub_file.read_to_end(&mut real_sub).unwrap();
+
+        assert_eq!(real_sub, buf);
+    }
+}
