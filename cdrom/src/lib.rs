@@ -23,23 +23,29 @@ impl Disc {
     }
 
     pub fn write_ccd(&self, writer: &mut File) -> io::Result<()> {
+        write!(writer, "{}", self.generate_ccd())
+    }
+
+    pub fn generate_ccd(&self) -> String {
+        let mut result = String::new();
+
         // Instead of using a real INI parser, write out via format strings.
         // The stuff we're doing here is simple enough.
         // Note that many values here are hardcoded, because we're not doing a
         // full implementation of every CD feature, even if they were in the
         // source BIN/CUE.
-        writeln!(writer, "[CloneCD]")?;
-        write!(writer, "Version=3\n\n")?;
+        result.push_str("[CloneCD]\n");
+        result.push_str("Version=3\n\n");
 
-        writeln!(writer, "[Disc]")?;
+        result.push_str("[Disc]\n");
         // We always write out exactly 3 TOC entries more than the number of tracks.
         // That accounts for extra TOC entries such as the leadout.
-        writeln!(writer, "TocEntries={}", self.tracks.len() + 3)?;
+        result.push_str(format!("TocEntries={}\n", self.tracks.len() + 3).as_str());
         // Multisession cuesheets are rare, we're pretending they don't exist
-        writeln!(writer, "Sessions=1")?;
-        writeln!(writer, "DataTracksScrambled=0")?;
+        result.push_str("Sessions=1\n");
+        result.push_str("DataTracksScrambled=0\n");
         // CD-TEXT not yet supported
-        write!(writer, "CDTextLength=0\n\n")?;
+        result.push_str("CDTextLength=0\n\n");
 
         // To match other tools, we write track 1 and the final track before
         // going back to write the other tracks.
@@ -50,59 +56,66 @@ impl Disc {
             first_track
         };
 
-        writeln!(writer, "[Session 1]")?;
+        result.push_str("[Session 1]\n");
         // Appears to be the type of the first track;
         // even in a mixed-mode disc, this is only specified once.
         // Is it possible for this to differ from the type of the first track? Unclear.
-        writeln!(writer, "PreGapMode={}", first_track.mode.as_u8())?;
+        result.push_str(format!("PreGapMode={}\n", first_track.mode.as_u8()).as_str());
         // Appears to be subchannel for pregap according to Aaru:
         // https://github.com/aaru-dps/Aaru/blob/5410ae5e74f2177887cd1e0e1866d8d55cf244d9/Aaru.Images/CloneCD/Constants.cs#L50
         // Unclear what the "correct" value is, but safe to hardcode.
-        write!(writer, "PreGapSubC=0\n\n")?;
+        result.push_str("PreGapSubC=0\n\n");
 
         let mut entry = 0;
 
-        self.write_track(writer, entry, Pointer::FirstTrack, first_track)?;
+        result.push_str(
+            self.generate_track(entry, Pointer::FirstTrack, first_track)
+                .as_str(),
+        );
         entry += 1;
-        self.write_track(writer, entry, Pointer::LastTrack, last_track)?;
+        result.push_str(
+            self.generate_track(entry, Pointer::LastTrack, last_track)
+                .as_str(),
+        );
         entry += 1;
-        self.write_track(writer, entry, Pointer::LeadOut, last_track)?;
+        result.push_str(
+            self.generate_track(entry, Pointer::LeadOut, last_track)
+                .as_str(),
+        );
         entry += 1;
 
         for track in &self.tracks {
-            self.write_track(writer, entry, Pointer::Track(track.number), track)?;
+            result.push_str(
+                self.generate_track(entry, Pointer::Track(track.number), track)
+                    .as_str(),
+            );
             entry += 1;
         }
 
         // Next, we want to handle writing out the track index.
         // This is a vaguely cuesheet-like format that's optional.
         for track in &self.tracks {
-            self.write_track_entry(writer, track)?;
+            result.push_str(self.generate_track_entry(track).as_str());
         }
 
-        Ok(())
+        result
     }
 
-    fn write_track(
-        &self,
-        writer: &mut File,
-        entry: usize,
-        pointer: Pointer,
-        track: &Track,
-    ) -> io::Result<()> {
+    fn generate_track(&self, entry: usize, pointer: Pointer, track: &Track) -> String {
+        let mut result = String::new();
         // The data in a CCD file is a low-level representation of the disc's leadin
         // in a plaintext INI format.
         // For some more information keys and their values, see
         // https://psx-spx.consoledev.net/cdromdrive/
-        writeln!(writer, "[Entry {}]", entry)?;
-        writeln!(writer, "Session=1")?;
+        result.push_str(format!("[Entry {}]\n", entry).as_str());
+        result.push_str("Session=1\n");
         // Pointer is either a track number from 1 to 99, *or* it's a control
         // code. Valid control codes according to the spec are:
         // A0 - P-MIN field indicates the first information track, and P-SEC/P-FRAC are zero
         // A1 - P-MIN field indicates the last information track, and P-SEC/P-FRAC are zero
         // A2 - P-MIN field indicates the start of the leadout, and P-SEC/P-FRAC are zero
         // For more detail, see section 22.3.4.2 of ECMA-130.
-        writeln!(writer, "Point=0x{:02x}", pointer.as_u8())?;
+        result.push_str(format!("Point=0x{:02x}\n", pointer.as_u8()).as_str());
 
         // Next, based on that value, we need to determine how to set M/S/F.
         // They might not actually be the real timekeeping info, based on the above.
@@ -131,7 +144,7 @@ impl Disc {
             }
         }
 
-        writeln!(writer, "ADR=0x01")?;
+        result.push_str("ADR=0x01\n");
         // Control field. This is a 4-bit value defining the track type.
         // There are more settings, but we only set these two.
         // See section 22.3.1 of ECMA-130.
@@ -145,35 +158,37 @@ impl Disc {
             // Data with copy flag set - 0100
             4
         };
-        writeln!(writer, "Control=0x{:02x}", control)?;
+        result.push_str(format!("Control=0x{:02x}\n", control).as_str());
         // Yes, this is hardcodable despite what it looks like
-        writeln!(writer, "TrackNo=0")?;
+        result.push_str("TrackNo=0\n");
         // Despite the A-MIN/SEC/FRAC values in the subchannel always containing
         // an absolute timestamp, here they're always zeroed out.
-        writeln!(writer, "AMin=0")?;
-        writeln!(writer, "ASec=0")?;
-        writeln!(writer, "AFrame=0")?;
+        result.push_str("AMin=0\n");
+        result.push_str("ASec=0\n");
+        result.push_str("AFrame=0\n");
         // Should probably be calculated based on the pregap
-        writeln!(writer, "ALBA=-150")?;
-        writeln!(writer, "Zero=0")?;
+        result.push_str("ALBA=-150\n");
+        result.push_str("Zero=0\n");
         // These three next values are the absolute MIN/SEC/FRAC
-        writeln!(writer, "PMin={}", m)?;
-        writeln!(writer, "PSec={}", s)?;
-        writeln!(writer, "PFrame={}", f)?;
-        write!(writer, "PLBA={}\n\n", lba)?;
+        result.push_str(format!("PMin={}\n", m).as_str());
+        result.push_str(format!("PSec={}\n", s).as_str());
+        result.push_str(format!("PFrame={}\n", f).as_str());
+        result.push_str(format!("PLBA={}\n\n", lba).as_str());
 
-        Ok(())
+        result
     }
 
-    fn write_track_entry(&self, writer: &mut File, track: &Track) -> io::Result<()> {
-        writeln!(writer, "[TRACK {}]", track.number)?;
-        writeln!(writer, "MODE={}", track.mode.as_u8())?;
+    fn generate_track_entry(&self, track: &Track) -> String {
+        let mut result = String::new();
+
+        result.push_str(format!("[TRACK {}]\n", track.number).as_str());
+        result.push_str(format!("MODE={}\n", track.mode.as_u8()).as_str());
 
         for index in &track.indices {
-            writeln!(writer, "INDEX {}={}", index.number, index.start)?;
+            result.push_str(format!("INDEX {}={}\n", index.number, index.start).as_str());
         }
 
-        Ok(())
+        result
     }
 }
 
