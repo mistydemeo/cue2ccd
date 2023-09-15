@@ -592,7 +592,7 @@ mod tests {
         }
 
         let real_sub_path = paths.one_track_ccd.join("basic_image.sub");
-        let mut real_sub_file = File::open(&real_sub_path).unwrap();
+        let mut real_sub_file = File::open(real_sub_path).unwrap();
         let mut real_sub = vec![];
         real_sub_file.read_to_end(&mut real_sub).unwrap();
 
@@ -603,7 +603,7 @@ mod tests {
     fn test_onetrack_ccd() {
         let paths = get_test_paths();
         let in_cue = paths.one_track_cue.join("basic_image.cue");
-        let cue_sheet = read_to_string(&in_cue).unwrap();
+        let cue_sheet = read_to_string(in_cue).unwrap();
 
         let cd = CD::parse(cue_sheet).unwrap();
         let disc = Disc::from_cuesheet(cd, get_filesize("onetrack"));
@@ -611,7 +611,7 @@ mod tests {
         let ccd = disc.generate_ccd();
 
         let real_ccd_path = paths.one_track_ccd.join("basic_image.ccd");
-        let real_ccd = read_to_string(&real_ccd_path).unwrap();
+        let real_ccd = read_to_string(real_ccd_path).unwrap();
 
         assert_eq!(real_ccd, ccd);
     }
@@ -631,7 +631,7 @@ mod tests {
         }
 
         let real_sub_path = paths.data_plus_audio_ccd.join("disc.sub");
-        let mut real_sub_file = File::open(&real_sub_path).unwrap();
+        let mut real_sub_file = File::open(real_sub_path).unwrap();
         let mut real_sub = vec![];
         real_sub_file.read_to_end(&mut real_sub).unwrap();
 
@@ -642,7 +642,7 @@ mod tests {
     fn test_multitrack_ccd() {
         let paths = get_test_paths();
         let in_cue = paths.data_plus_audio_cue.join("disc.cue");
-        let cue_sheet = read_to_string(&in_cue).unwrap();
+        let cue_sheet = read_to_string(in_cue).unwrap();
 
         let cd = CD::parse(cue_sheet).unwrap();
         let disc = Disc::from_cuesheet(cd, get_filesize("dataplusaudio"));
@@ -650,7 +650,7 @@ mod tests {
         let ccd = disc.generate_ccd();
 
         let real_ccd_path = paths.data_plus_audio_ccd.join("disc.ccd");
-        let real_ccd = read_to_string(&real_ccd_path).unwrap();
+        let real_ccd = read_to_string(real_ccd_path).unwrap();
 
         assert_eq!(real_ccd, ccd);
     }
