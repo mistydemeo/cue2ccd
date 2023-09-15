@@ -43,3 +43,19 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --workspace --tests --examples
+
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - uses: swatinem/rust-cache@v2
+      - name: Install dependencies
+        run: sudo apt-get install libcue-dev
+      - name: Tests (cdrom)
+        run: |
+          cd cdrom
+          # libcue isn't thread-safe
+          cargo test -- --test-threads=1
