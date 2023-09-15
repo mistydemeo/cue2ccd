@@ -600,6 +600,23 @@ mod tests {
     }
 
     #[test]
+    fn test_onetrack_ccd() {
+        let paths = get_test_paths();
+        let in_cue = paths.one_track_cue.join("basic_image.cue");
+        let cue_sheet = read_to_string(&in_cue).unwrap();
+
+        let cd = CD::parse(cue_sheet).unwrap();
+        let disc = Disc::from_cuesheet(cd, get_filesize("onetrack"));
+
+        let ccd = disc.generate_ccd();
+
+        let real_ccd_path = paths.one_track_ccd.join("basic_image.ccd");
+        let real_ccd = read_to_string(&real_ccd_path).unwrap();
+
+        assert_eq!(real_ccd, ccd);
+    }
+
+    #[test]
     fn test_multitrack_subchannel() {
         let paths = get_test_paths();
         let in_cue = paths.data_plus_audio_cue.join("disc.cue");
@@ -619,5 +636,22 @@ mod tests {
         real_sub_file.read_to_end(&mut real_sub).unwrap();
 
         assert_eq!(real_sub, buf);
+    }
+
+    #[test]
+    fn test_multitrack_ccd() {
+        let paths = get_test_paths();
+        let in_cue = paths.data_plus_audio_cue.join("disc.cue");
+        let cue_sheet = read_to_string(&in_cue).unwrap();
+
+        let cd = CD::parse(cue_sheet).unwrap();
+        let disc = Disc::from_cuesheet(cd, get_filesize("dataplusaudio"));
+
+        let ccd = disc.generate_ccd();
+
+        let real_ccd_path = paths.data_plus_audio_ccd.join("disc.ccd");
+        let real_ccd = read_to_string(&real_ccd_path).unwrap();
+
+        assert_eq!(real_ccd, ccd);
     }
 }
