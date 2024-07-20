@@ -1,4 +1,4 @@
-use std::fs::{copy, File};
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
@@ -11,13 +11,9 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Diagnostic)]
 enum Cue2CCDError {
-    #[error("This tool currently only supports single-file BIN/CUE images.")]
-    #[diagnostic(help("Please specify a cuesheet with a single BIN file. You can convert a multi-track disc image into a single track image using chdman or binmerge."))]
-    MultipleFilesError {},
-
-    #[error("A data file specified in the cuesheet is missing.")]
-    #[diagnostic(help("Missing file: {}", missing_file.display()))]
-    MissingFileError { missing_file: std::path::PathBuf },
+    #[error("Couldn't find one or more files specified in the cuesheet.")]
+    #[diagnostic(help("Missing files: {}", missing_files.join(", ")))]
+    MissingFilesError { missing_files: Vec<String> },
 
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing .wav files are not compatible."))]
@@ -26,10 +22,6 @@ enum Cue2CCDError {
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing ISOs or other non-raw data are not compatible."))]
     CookedData {},
-
-    #[error("The provided disc image has an invalid file size")]
-    #[diagnostic(help("Check if the .bin for your disc image is corrupted."))]
-    InvalidFilesizeError {},
 
     #[error(transparent)]
     IO(#[from] std::io::Error),
@@ -53,18 +45,6 @@ struct Args {
     output_path: Option<String>,
 }
 
-fn has_multiple_files(tracks: &[Track]) -> bool {
-    let mut tracks_iter = tracks.iter();
-    let base_file = tracks_iter.next().unwrap().get_filename();
-    for track in tracks_iter {
-        if track.get_filename() != base_file {
-            return true;
-        }
-    }
-
-    false
-}
-
 fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
     for track in tracks {
         if track.get_filename().ends_with(".wav") {
@@ -78,13 +58,6 @@ fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
         }
     }
     Ok(())
-}
-
-fn sector_count(size: u64, sector_size: u64) -> Result<u64, Cue2CCDError> {
-    if size % sector_size != 0 {
-        return Err(Cue2CCDError::InvalidFilesizeError {});
-    }
-    Ok(size / sector_size)
 }
 
 fn main() -> Result<(), miette::Report> {
@@ -113,32 +86,31 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let tracks = cd.tracks();
 
-    // Reconstructing a new index would be easier if we could produce a new
-    // cuesheet, or by refactoring the construction code in the cdrom crate to
-    // be a bit less dependent on a cuesheet. This is a nice stretch goal for
-    // the future. In the meantime, users can consolidate their multi-track
-    // bin/cues using chdman or something else.
-    // Note that while we don't actually read the data file ourself, consumers
-    // of the CUE/SUB files produced by this tool won't be able to understand
-    // split images.
-    if has_multiple_files(&tracks) {
-        return Err(Cue2CCDError::MultipleFilesError {});
-    }
+    // We validate that the track modes are compatible. BIN/CUE can be
+    // a variety of different formats, including WAVE files and "cooked"
+    // tracks with no error correction metadata. We need all raw files in
+    // order to be able to merge into a CloneCD image.
+    // In the future, it may be nice to support actually converting tracks
+    // into the supported format, but right now that's out of scope.
     validate_mode(&tracks)?;
 
-    let fname = cd.tracks().first().unwrap().get_filename();
-    let file = root.join(fname);
-    if !file.is_file() {
-        return Err(Cue2CCDError::MissingFileError { missing_file: file });
+    let files = tracks
+        .iter()
+        .map(|t| t.get_filename())
+        .collect::<Vec<String>>();
+    let missing_files = files
+        .iter()
+        .filter(|f| !root.join(f).is_file())
+        .cloned()
+        .collect::<Vec<String>>();
+    if !missing_files.is_empty() {
+        return Err(Cue2CCDError::MissingFilesError { missing_files });
     }
-    let filesize = file.metadata()?.len();
-    let sectors = sector_count(filesize, 2352)?;
-    println!("Image is {} sectors long", sectors);
 
     let sub_target = output_stem.with_extension("sub");
     let mut sub_write = File::create(sub_target)?;
 
-    let disc = Disc::from_cuesheet(cd, sectors as i64);
+    let disc = Disc::from_cuesheet(cd, root);
     for sector in disc.sectors() {
         sub_write.write_all(&sector.generate_subchannel())?;
     }
@@ -156,7 +128,15 @@ fn work() -> Result<(), Cue2CCDError> {
             );
             return Ok(());
         }
-        copy(file, img_target)?;
+        let mut out_file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&img_target)?;
+        for fname in files {
+            let mut in_file = File::open(root.join(&fname))?;
+            std::io::copy(&mut in_file, &mut out_file)?;
+            out_file.flush()?;
+        }
     }
 
     Ok(())
