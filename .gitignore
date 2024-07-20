@@ -9,6 +9,7 @@
 # uncommitted local test data
 /*.7z
 /real_image
+/realtest
 
 # oranda
 /public

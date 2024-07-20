@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::{self, Write};
+use std::path::Path;
 
 use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
 use cue::cd::CD;
@@ -253,28 +254,52 @@ impl<'a> Iterator for SectorIterator<'a> {
     }
 }
 
+fn sector_length(path: &Path) -> i64 {
+    let metadata = match path.metadata() {
+        Ok(m) => m,
+        Err(_) => return 0,
+    };
+
+    metadata.len() as i64 / 2352
+}
+
 impl Disc {
-    pub fn from_cuesheet(cuesheet: CD, sector_count: i64) -> Disc {
+    pub fn from_cuesheet(cuesheet: CD, root: &Path) -> Disc {
+        let mut previous_file: Option<String> = None;
+        let mut disc_length_so_far = 0;
+        let mut current_track_length = 0;
+
         let mut tracks = vec![];
         for (i, track) in cuesheet.tracks().iter().enumerate() {
+            let current_file = track.get_filename();
+            current_track_length = sector_length(&root.join(&current_file));
+
+            // At the start of a new file, track the offset
+            if let Some(previous) = &previous_file {
+                if previous != &current_file {
+                    disc_length_so_far += sector_length(&root.join(previous));
+                }
+            }
+
             let tracknum = i as u8 + 1;
 
-            let start = track.get_start();
+            let start = track.get_start() + disc_length_so_far;
             // The last track on the disc will have indeterminate length,
             // because the cuesheet doesn't store that; we need to calculate
-            // it from the size of the disc.
-            let length = track.get_length().unwrap_or(sector_count - start);
+            // it from the size of the current disc/track image.
+            let length = track.get_length().unwrap_or(current_track_length - start);
 
             let mut indices = vec![];
             for i in 0..99 {
                 if let Some(index) = track.get_index(i) {
+                    let index = index + disc_length_so_far as isize;
                     // Cuesheet doesn't actually track the end of an index,
                     // so we need to either calculate the boundary of the next
                     // index within the track or the end of the track itself.
                     let end = if let Some(next) = track.get_index(i + 1) {
-                        next as i64 - 1
+                        next as i64 - 1 + start
                     } else {
-                        start + track.get_length().unwrap_or(sector_count)
+                        start + track.get_length().unwrap_or(current_track_length)
                     };
 
                     indices.push(Index {
@@ -287,16 +312,20 @@ impl Disc {
 
             tracks.push(Track {
                 number: tracknum,
-                start: track.get_start(),
+                start,
                 length,
                 indices,
                 mode: TrackMode::from_cue_mode(track.get_mode()),
             });
+
+            if previous_file != Some(current_file.to_string()) {
+                previous_file = Some(current_file.to_string());
+            }
         }
 
         Disc {
             tracks,
-            sector_count,
+            sector_count: disc_length_so_far + current_track_length,
         }
     }
 }
@@ -555,15 +584,6 @@ mod tests {
         one_track_ccd: PathBuf,
     }
 
-    // Just hardcode these for now
-    fn get_filesize(source: &str) -> i64 {
-        match source {
-            "onetrack" => 316,
-            "dataplusaudio" => 766,
-            _ => 0,
-        }
-    }
-
     fn get_test_paths() -> TestPaths {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("..")
@@ -584,7 +604,7 @@ mod tests {
         let cue_sheet = read_to_string(&in_cue).unwrap();
 
         let cd = CD::parse(cue_sheet).unwrap();
-        let disc = Disc::from_cuesheet(cd, get_filesize("onetrack"));
+        let disc = Disc::from_cuesheet(cd, &paths.one_track_cue);
 
         let mut buf = vec![];
         for sector in disc.sectors() {
@@ -606,7 +626,7 @@ mod tests {
         let cue_sheet = read_to_string(in_cue).unwrap();
 
         let cd = CD::parse(cue_sheet).unwrap();
-        let disc = Disc::from_cuesheet(cd, get_filesize("onetrack"));
+        let disc = Disc::from_cuesheet(cd, &paths.one_track_cue);
 
         let ccd = disc.generate_ccd();
 
@@ -623,7 +643,7 @@ mod tests {
         let cue_sheet = read_to_string(&in_cue).unwrap();
 
         let cd = CD::parse(cue_sheet).unwrap();
-        let disc = Disc::from_cuesheet(cd, get_filesize("dataplusaudio"));
+        let disc = Disc::from_cuesheet(cd, &paths.data_plus_audio_cue);
 
         let mut buf = vec![];
         for sector in disc.sectors() {
@@ -645,7 +665,7 @@ mod tests {
         let cue_sheet = read_to_string(in_cue).unwrap();
 
         let cd = CD::parse(cue_sheet).unwrap();
-        let disc = Disc::from_cuesheet(cd, get_filesize("dataplusaudio"));
+        let disc = Disc::from_cuesheet(cd, &paths.data_plus_audio_cue);
 
         let ccd = disc.generate_ccd();
 
