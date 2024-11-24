@@ -122,14 +122,14 @@ fn work() -> Result<(), Cue2CCDError> {
     // of the CUE/SUB files produced by this tool won't be able to understand
     // split images.
     if has_multiple_files(&tracks) {
-        return Err(Cue2CCDError::MultipleFilesError {})?;
+        return Err(Cue2CCDError::MultipleFilesError {});
     }
     validate_mode(&tracks)?;
 
     let fname = cd.tracks().first().unwrap().get_filename();
     let file = root.join(fname);
     if !file.is_file() {
-        return Err(Cue2CCDError::MissingFileError { missing_file: file })?;
+        return Err(Cue2CCDError::MissingFileError { missing_file: file });
     }
     let filesize = file.metadata()?.len();
     let sectors = sector_count(filesize, 2352)?;
