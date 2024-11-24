@@ -16,8 +16,12 @@ as your original image, ready for use.
 Limitations
 -----------
 
-* cue2ccd doesn't currently support multi-track disc images like the ones produced by Redump. Before using cue2ccd, convert your disc image into a single-track image using [binmerge](https://github.com/putnam/binmerge) or [MAME's chdman](https://www.mamedev.org/release.html).
 * cue2ccd only supports raw disc images; it doesn't support ISO files or cuesheets containing ISOs or WAV files.
+
+Building
+--------
+
+To build from source, just run `cargo build` or `cargo run`. Windows users will first need to install flex and bison; this can be done using chocolatey by running [`choco install winflexbison`](https://community.chocolatey.org/packages/winflexbison).
 
 Support
 -------
