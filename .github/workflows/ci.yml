@@ -52,8 +52,6 @@ jobs:
         with:
           toolchain: stable
       - uses: swatinem/rust-cache@v2
-      - name: Install dependencies
-        run: sudo apt-get install libcue-dev
       - name: Tests (cdrom)
         run: |
           cd cdrom
