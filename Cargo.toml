@@ -2,6 +2,8 @@
 name = "cue2ccd"
 version = "0.1.0"
 edition = "2021"
+homepage = "https://www.mistys-internet.website/cue2ccd/"
+description = "Tool to convert BIN/CUE disc images to CCD/IMG/SUB"
 repository = "https://github.com/mistydemeo/cue2ccd"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
