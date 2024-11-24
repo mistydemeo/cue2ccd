@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 cdrom_crc = "0.1.0"
-cue = "2.0.0"
+cue = "3.0.0"
