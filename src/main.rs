@@ -126,18 +126,23 @@ fn work() -> Result<(), Cue2CCDError> {
                 "A .img file at path {} already exists; skipping copy",
                 img_target.as_path().display()
             );
-            return Ok(());
-        }
-        let mut out_file = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&img_target)?;
-        for fname in files {
-            let mut in_file = File::open(root.join(&fname))?;
-            std::io::copy(&mut in_file, &mut out_file)?;
-            out_file.flush()?;
+        } else {
+            let mut out_file = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&img_target)?;
+            for fname in files {
+                let mut in_file = File::open(root.join(&fname))?;
+                std::io::copy(&mut in_file, &mut out_file)?;
+                out_file.flush()?;
+            }
         }
     }
+
+    eprintln!(
+        "Conversion complete! Created {}",
+        output_stem.with_extension("ccd").display()
+    );
 
     Ok(())
 }
