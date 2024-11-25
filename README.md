@@ -11,7 +11,7 @@ Usage
 -----
 
 Using cue2ccd is straightforward: just run `cue2ccd path_to_your_disc.cue`. It will produce the `.img`, `.ccd` and `.sub` files you need in the same directory
-as your original image, ready for use.
+as your original image, ready for use. If you prefer the generated files to be placed in a separate directory, you can specify the output path with the `--output-path` option.
 
 Limitations
 -----------
