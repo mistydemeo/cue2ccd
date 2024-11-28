@@ -28,6 +28,10 @@ Support
 
 Support is available on the [GitHub issue tracker](https://github.com/mistydemeo/cue2ccd/issues). I'm also happy to talk about feature requests.
 
+## License
+
+cue2ccd is licensed under the GPL 2.0, which is the same license used by libcue.
+
 <div class="oranda-hide">
 
 Contributing
