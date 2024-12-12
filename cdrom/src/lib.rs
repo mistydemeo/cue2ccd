@@ -133,10 +133,8 @@ impl Disc {
             }
             Pointer::LeadOut => {
                 lba = self.sector_count;
-                // M/S/F differs from LBA by pregap size
-                // Right now we're hardcoding that.
-                // Should un-hardcode this later, but this also smells
-                // suspiciously like an off-by-150 error on one side?
+                // M/S/F is absolute, counting the 150 lead-in sectors,
+                // while the LBA is relative to the start of disc content.
                 (m, s, f) = lba_to_msf(lba + 150);
             }
             _ => {
