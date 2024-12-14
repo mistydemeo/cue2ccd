@@ -1,3 +1,0 @@
-- name: Install bison/flex
-  if: runner.os == 'Windows'
-  run: choco install winflexbison
