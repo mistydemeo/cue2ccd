@@ -4,5 +4,10 @@
   },
   "styles": {
     "theme": "axolight"
+  },
+  "components": {
+    "artifacts": {
+      "cargo_dist": true
+    }
   }
 }
