@@ -107,7 +107,7 @@ dependencies = [
 
 [[package]]
 name = "cdrom"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cdrom_crc",
  "cue",
@@ -204,7 +204,7 @@ dependencies = [
 
 [[package]]
 name = "cue2ccd"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "cdrom",
  "clap",
