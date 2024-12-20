@@ -15,6 +15,9 @@ enum Cue2CCDError {
     #[diagnostic(help("Missing files: {}", missing_files.join(", ")))]
     MissingFilesError { missing_files: Vec<String> },
 
+    #[error("Unable to determine the directory {filename} is in!")]
+    NoParentError { filename: String },
+
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing .wav files are not compatible."))]
     WaveFile {},
@@ -68,7 +71,11 @@ fn main() -> Result<(), miette::Report> {
 fn work() -> Result<(), Cue2CCDError> {
     let args = Args::parse();
 
-    let root = Path::new(&args.filename).parent().unwrap();
+    let Some(root) = Path::new(&args.filename).parent() else {
+        return Err(Cue2CCDError::NoParentError {
+            filename: args.filename,
+        });
+    };
     let path;
     let output_path;
     if let Some(p) = args.output_path {
