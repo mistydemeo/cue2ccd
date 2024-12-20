@@ -18,6 +18,9 @@ enum Cue2CCDError {
     #[error("Unable to determine the directory {filename} is in!")]
     NoParentError { filename: String },
 
+    #[error("Unable to determine the filename portion of {filename}!")]
+    NoFilenameError { filename: String },
+
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing .wav files are not compatible."))]
     WaveFile {},
@@ -76,6 +79,11 @@ fn work() -> Result<(), Cue2CCDError> {
             filename: args.filename,
         });
     };
+    let Some(basename) = Path::new(&args.filename).file_name() else {
+        return Err(Cue2CCDError::NoFilenameError {
+            filename: args.filename,
+        });
+    };
     let path;
     let output_path;
     if let Some(p) = args.output_path {
@@ -85,7 +93,7 @@ fn work() -> Result<(), Cue2CCDError> {
         output_path = root;
     }
     // Provides a pattern to build output filenames from
-    let output_stem = output_path.join(Path::new(&args.filename));
+    let output_stem = output_path.join(basename);
 
     let cue_sheet = std::fs::read_to_string(&args.filename)?;
 
