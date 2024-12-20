@@ -78,7 +78,7 @@ fn work() -> Result<(), Cue2CCDError> {
         output_path = root;
     }
     // Provides a pattern to build output filenames from
-    let output_stem = output_path.join(Path::new(&args.filename).file_stem().unwrap());
+    let output_stem = output_path.join(Path::new(&args.filename));
 
     let cue_sheet = std::fs::read_to_string(&args.filename)?;
 
