@@ -285,7 +285,9 @@ impl Disc {
             // The last track on the disc will have indeterminate length,
             // because the cuesheet doesn't store that; we need to calculate
             // it from the size of the current disc/track image.
-            let length = track.get_length().unwrap_or(current_track_length - start);
+            let length = track
+                .get_length()
+                .unwrap_or(disc_length_so_far + current_track_length - start);
 
             let mut indices = vec![];
             for i in 0..99 {
