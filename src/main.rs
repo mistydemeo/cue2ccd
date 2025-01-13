@@ -3,6 +3,7 @@ use std::io::Write;
 use std::path::Path;
 
 use cdrom::Disc;
+use cdrom::DiscProtection;
 use clap::Parser;
 use cue::cd::CD;
 use cue::track::{Track, TrackMode};
@@ -20,6 +21,9 @@ enum Cue2CCDError {
 
     #[error("Unable to determine the filename portion of {filename}!")]
     NoFilenameError { filename: String },
+
+    #[error("Protection flag provided with no matching protection type!")]
+    NoProtectionError {},
 
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing .wav files are not compatible."))]
@@ -49,6 +53,9 @@ struct Args {
     skip_img_copy: bool,
     #[arg(long)]
     output_path: Option<String>,
+    #[arg(long, default_value_t = false)]
+    protection: bool,
+    chosen_protection_type: Option<String>,
 }
 
 fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
@@ -101,6 +108,22 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let tracks = cd.tracks();
 
+    let mut current_protection: Option<DiscProtection> = None;
+    let input = args.chosen_protection_type;
+
+    if args.protection {
+        match input {
+            Some(input) if input.to_lowercase() ==
+                "discguard" => current_protection = Option::from(DiscProtection::DiscGuard),
+            Some(input) if input.to_lowercase() ==
+                "securom" => current_protection = Option::from(DiscProtection::SecuROM),
+            Some(input) if input.to_lowercase() ==
+                "libcrypt" => current_protection = Option::from(DiscProtection::LibCrypt),
+            None => return Err(Cue2CCDError::NoProtectionError{}),
+            _ => return Err(Cue2CCDError::NoProtectionError{}),
+        }
+    }
+
     // We validate that the track modes are compatible. BIN/CUE can be
     // a variety of different formats, including WAVE files and "cooked"
     // tracks with no error correction metadata. We need all raw files in
@@ -127,7 +150,8 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let disc = Disc::from_cuesheet(cd, root);
     for sector in disc.sectors() {
-        sub_write.write_all(&sector.generate_subchannel())?;
+        sub_write.write_all(&sector.generate_subchannel(Some(args.protection),
+                                                        Some(current_protection.take().unwrap())))?;
     }
 
     let ccd_target = output_stem.with_extension("ccd");
