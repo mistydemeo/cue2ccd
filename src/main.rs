@@ -145,8 +145,7 @@ fn work() -> Result<(), Cue2CCDError> {
     let disc = Disc::from_cuesheet(cd, root);
     for sector in disc.sectors() {
         sub_write
-            .write_all(&sector.generate_subchannel(&chosen_protection_type))
-            .expect("This should never be modified");
+            .write_all(&sector.generate_subchannel(&chosen_protection_type))?;
     }
 
     let ccd_target = output_stem.with_extension("ccd");

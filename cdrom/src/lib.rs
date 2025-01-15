@@ -437,7 +437,7 @@ impl Sector {
     // http://www.ecma-international.org/publications/standards/Ecma-130.htm
     pub fn generate_subchannel(
         &self,
-        chosen_protection_type: &Option<DiscProtection>,)
+        _chosen_protection_type: &Option<DiscProtection>,)
         -> Vec<u8> {
         // The first sector of the disc, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
@@ -455,7 +455,7 @@ impl Sector {
             self.track.number,
             self.index.number,
             self.track.mode,
-            chosen_protection_type,
+            _chosen_protection_type,
         );
         // The vast majority of real discs write their unused R-W fields as 0s,
         // but at least one real disc used FFs instead. We'll side with the
@@ -476,7 +476,7 @@ impl Sector {
         track: u8,
         index: u8,
         track_type: TrackMode,
-        chosen_protection_type:
+        _chosen_protection_type:
         &Option<DiscProtection>
     ) -> Vec<u8> {
         // This channel made up of a sequence of bits; we'll start by
