@@ -3,6 +3,7 @@ use std::io::Write;
 use std::path::Path;
 
 use cdrom::Disc;
+use cdrom::DiscProtection;
 use clap::Parser;
 use cue::cd::CD;
 use cue::track::{Track, TrackMode};
@@ -20,6 +21,9 @@ enum Cue2CCDError {
 
     #[error("Unable to determine the filename portion of {filename}!")]
     NoFilenameError { filename: String },
+    // TODO: list choices on this error, also in other places
+    #[error("Protection flag provided with invalid protection type!")]
+    InvalidProtectionError {},
 
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing .wav files are not compatible."))]
@@ -49,6 +53,8 @@ struct Args {
     skip_img_copy: bool,
     #[arg(long)]
     output_path: Option<String>,
+    #[arg(long)]
+    pub protection_type: Option<String>,
 }
 
 fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
@@ -100,6 +106,17 @@ fn work() -> Result<(), Cue2CCDError> {
     let cd = CD::parse(cue_sheet)?;
 
     let tracks = cd.tracks();
+    let chosen_protection_type: Option<DiscProtection> = match args
+        .protection_type
+        .map(|t| t.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("discguard") => Some(DiscProtection::DiscGuard),
+        Some("securom") => Some(DiscProtection::SecuROM),
+        Some("libcrypt") => Some(DiscProtection::LibCrypt),
+        None => None,
+        _ => return Err(Cue2CCDError::InvalidProtectionError {}),
+    };
 
     // We validate that the track modes are compatible. BIN/CUE can be
     // a variety of different formats, including WAVE files and "cooked"
@@ -127,7 +144,8 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let disc = Disc::from_cuesheet(cd, root);
     for sector in disc.sectors() {
-        sub_write.write_all(&sector.generate_subchannel())?;
+        sub_write
+            .write_all(&sector.generate_subchannel(&chosen_protection_type))?;
     }
 
     let ccd_target = output_stem.with_extension("ccd");

@@ -435,7 +435,10 @@ impl Sector {
     //
     // More information is in ECMA-130:
     // http://www.ecma-international.org/publications/standards/Ecma-130.htm
-    pub fn generate_subchannel(&self) -> Vec<u8> {
+    pub fn generate_subchannel(
+        &self,
+        _chosen_protection_type: &Option<DiscProtection>,)
+        -> Vec<u8> {
         // The first sector of the disc, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
         // sector uses 0s.
@@ -452,6 +455,7 @@ impl Sector {
             self.track.number,
             self.index.number,
             self.track.mode,
+            _chosen_protection_type,
         );
         // The vast majority of real discs write their unused R-W fields as 0s,
         // but at least one real disc used FFs instead. We'll side with the
@@ -472,6 +476,8 @@ impl Sector {
         track: u8,
         index: u8,
         track_type: TrackMode,
+        _chosen_protection_type:
+        &Option<DiscProtection>
     ) -> Vec<u8> {
         // This channel made up of a sequence of bits; we'll start by
         // zeroing it out, then setting individual bits.
@@ -526,6 +532,7 @@ impl Sector {
         // MIN
         q[3] = bcd(relative_sector_count / 4500);
         // SEC
+        // TODO: Example implementation "If protection is true and protection is [x], else"
         q[4] = bcd((relative_sector_count / 75) % 60);
         // FRAC
         q[5] = bcd(relative_sector_count % 75);
@@ -545,6 +552,17 @@ impl Sector {
 
         q
     }
+}
+
+//TODO: Possible protections, improve descriptions after review
+#[derive(Debug)]
+pub enum DiscProtection {
+    /// Change one second of sector MSFs
+    DiscGuard,
+    /// Subchannel-error-based PC protection
+    SecuROM,
+    /// Subchannel-error-based PS1 protection
+    LibCrypt,
 }
 
 // For more detail, see section 22.3.4.2 of ECMA-130.
@@ -608,7 +626,7 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel()).unwrap();
+            buf.write_all(&sector.generate_subchannel(&None)).unwrap();
         }
 
         let real_sub_path = paths.one_track_ccd.join("basic_image.sub");
@@ -647,7 +665,7 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel()).unwrap();
+            buf.write_all(&sector.generate_subchannel(&None)).unwrap();
         }
 
         let real_sub_path = paths.data_plus_audio_ccd.join("disc.sub");
