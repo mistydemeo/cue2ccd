@@ -435,10 +435,7 @@ impl Sector {
     //
     // More information is in ECMA-130:
     // http://www.ecma-international.org/publications/standards/Ecma-130.htm
-    pub fn generate_subchannel(
-        &self,
-        _chosen_protection_type: &Option<DiscProtection>,)
-        -> Vec<u8> {
+    pub fn generate_subchannel(&self, _chosen_protection_type: &Option<DiscProtection>) -> Vec<u8> {
         // The first sector of the disc, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
         // sector uses 0s.
@@ -476,8 +473,7 @@ impl Sector {
         track: u8,
         index: u8,
         track_type: TrackMode,
-        _chosen_protection_type:
-        &Option<DiscProtection>
+        _chosen_protection_type: &Option<DiscProtection>,
     ) -> Vec<u8> {
         // This channel made up of a sequence of bits; we'll start by
         // zeroing it out, then setting individual bits.
