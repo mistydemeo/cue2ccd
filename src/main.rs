@@ -21,9 +21,9 @@ enum Cue2CCDError {
 
     #[error("Unable to determine the filename portion of {filename}!")]
     NoFilenameError { filename: String },
-
-    #[error("Protection flag provided with no matching protection type!")]
-    NoProtectionError {},
+    // TODO: list choices on this error, also in other places
+    #[error("Protection flag provided with invalid protection type!")]
+    InvalidProtectionError {},
 
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing .wav files are not compatible."))]
@@ -53,9 +53,8 @@ struct Args {
     skip_img_copy: bool,
     #[arg(long)]
     output_path: Option<String>,
-    #[arg(long, default_value_t = false)]
-    protection: bool,
-    chosen_protection_type: Option<String>,
+    #[arg(long)]
+    pub protection_type: Option<String>,
 }
 
 fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
@@ -107,22 +106,17 @@ fn work() -> Result<(), Cue2CCDError> {
     let cd = CD::parse(cue_sheet)?;
 
     let tracks = cd.tracks();
-
-    let mut current_protection: Option<DiscProtection> = None;
-    let input = args.chosen_protection_type;
-
-    if args.protection {
-        match input {
-            Some(input) if input.to_lowercase() ==
-                "discguard" => current_protection = Option::from(DiscProtection::DiscGuard),
-            Some(input) if input.to_lowercase() ==
-                "securom" => current_protection = Option::from(DiscProtection::SecuROM),
-            Some(input) if input.to_lowercase() ==
-                "libcrypt" => current_protection = Option::from(DiscProtection::LibCrypt),
-            None => return Err(Cue2CCDError::NoProtectionError{}),
-            _ => return Err(Cue2CCDError::NoProtectionError{}),
-        }
-    }
+    let chosen_protection_type: Option<DiscProtection> = match args
+        .protection_type
+        .map(|t| t.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("discguard") => Some(DiscProtection::DiscGuard),
+        Some("securom") => Some(DiscProtection::SecuROM),
+        Some("libcrypt") => Some(DiscProtection::LibCrypt),
+        None => None,
+        _ => return Err(Cue2CCDError::InvalidProtectionError {}),
+    };
 
     // We validate that the track modes are compatible. BIN/CUE can be
     // a variety of different formats, including WAVE files and "cooked"
@@ -150,8 +144,9 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let disc = Disc::from_cuesheet(cd, root);
     for sector in disc.sectors() {
-        sub_write.write_all(&sector.generate_subchannel(Some(args.protection),
-                                                        Some(current_protection.take().unwrap())))?;
+        sub_write
+            .write_all(&sector.generate_subchannel(&chosen_protection_type))
+            .expect("This should never be modified");
     }
 
     let ccd_target = output_stem.with_extension("ccd");

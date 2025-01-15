@@ -437,8 +437,7 @@ impl Sector {
     // http://www.ecma-international.org/publications/standards/Ecma-130.htm
     pub fn generate_subchannel(
         &self,
-        protection: Option<bool>,
-        chosen_protection_type: Option<DiscProtection>,)
+        chosen_protection_type: &Option<DiscProtection>,)
         -> Vec<u8> {
         // The first sector of the disc, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
@@ -456,7 +455,6 @@ impl Sector {
             self.track.number,
             self.index.number,
             self.track.mode,
-            protection,
             chosen_protection_type,
         );
         // The vast majority of real discs write their unused R-W fields as 0s,
@@ -478,9 +476,8 @@ impl Sector {
         track: u8,
         index: u8,
         track_type: TrackMode,
-        protection: Option<bool>,
         chosen_protection_type:
-        Option<DiscProtection>
+        &Option<DiscProtection>
     ) -> Vec<u8> {
         // This channel made up of a sequence of bits; we'll start by
         // zeroing it out, then setting individual bits.
@@ -629,7 +626,7 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(None, None)).unwrap();
+            buf.write_all(&sector.generate_subchannel(&None)).unwrap();
         }
 
         let real_sub_path = paths.one_track_ccd.join("basic_image.sub");
@@ -668,7 +665,7 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(None, None)).unwrap();
+            buf.write_all(&sector.generate_subchannel(&None)).unwrap();
         }
 
         let real_sub_path = paths.data_plus_audio_ccd.join("disc.sub");
