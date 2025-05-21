@@ -119,9 +119,6 @@ fn work() -> Result<(), Cue2CCDError> {
     let output_stem = output_path.join(basename);
 
     let cue_sheet = std::fs::read_to_string(&args.filename)?;
-    // Trim trailing newlines to work around a libcue bug:
-    // https://github.com/lipnitsk/libcue/issues/52
-    let cue_sheet = cue_sheet.trim_end_matches(['\r', '\n']).to_owned();
 
     let cd = CD::parse(cue_sheet)?;
 
