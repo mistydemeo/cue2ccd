@@ -3,6 +3,7 @@ use std::io::{self, Write};
 use std::path::Path;
 
 use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
+pub use cue;
 use cue::cd::CD;
 use cue::track;
 

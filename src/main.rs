@@ -2,10 +2,10 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
+use cdrom::cue::cd::CD;
+use cdrom::cue::track::{Track, TrackMode};
 use cdrom::Disc;
 use clap::Parser;
-use cue::cd::CD;
-use cue::track::{Track, TrackMode};
 use miette::{Diagnostic, Result};
 use thiserror::Error;
 
