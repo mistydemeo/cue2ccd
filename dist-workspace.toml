@@ -19,6 +19,8 @@ publish-jobs = ["homebrew"]
 install-path = "CARGO_HOME"
 # Whether to install an updater program
 install-updater = false
+# Temporary, to let us upgrade the Ubuntu version
+allow-dirty = ["ci"]
 
 [dist.dependencies.chocolatey]
 winflexbison = '*'
