@@ -66,6 +66,23 @@ fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
     Ok(())
 }
 
+/// Fetches unique tracks from the list of tracks.
+/// If the same track appears multiple times in a row,
+/// returns only a single copy.
+fn get_unique_tracks(tracks: &[Track]) -> Vec<String> {
+    let mut files = vec![];
+
+    for track in tracks.iter() {
+        let filename = track.get_filename();
+        if files.last() == Some(&filename) {
+            continue;
+        }
+        files.push(filename);
+    }
+
+    files
+}
+
 fn main() -> Result<(), miette::Report> {
     work()?;
     Ok(())
@@ -112,10 +129,7 @@ fn work() -> Result<(), Cue2CCDError> {
     // into the supported format, but right now that's out of scope.
     validate_mode(&tracks)?;
 
-    let files = tracks
-        .iter()
-        .map(|t| t.get_filename())
-        .collect::<Vec<String>>();
+    let files = get_unique_tracks(&tracks);
     let missing_files = files
         .iter()
         .filter(|f| !root.join(f).is_file())
