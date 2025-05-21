@@ -10,7 +10,6 @@ repository = "https://github.com/mistydemeo/cue2ccd"
 
 [dependencies]
 clap = { version = "4.3.4", features = ["derive"] }
-cue = "3.0.1"
 miette = { version = "5.6.0", features = ["fancy"] }
 thiserror = "1.0.40"
 
