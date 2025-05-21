@@ -208,7 +208,6 @@ version = "1.0.1"
 dependencies = [
  "cdrom",
  "clap",
- "cue",
  "miette",
  "thiserror",
 ]
