@@ -2,6 +2,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
+use crate::DiscProtection::DiscGuard;
 use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
 pub use cue;
 use cue::cd::CD;
@@ -507,7 +508,21 @@ impl Sector {
         // usually only two values are seen:
         // 00 - Pregap or postgap
         // 01 - First index within the track, or leadout
-        q[2] = bcd(index as i64);
+        match _chosen_protection_type {
+            // For some reason, for later/main variant DiscGuard discs, index 02 is only applied for
+            // the q subchannel in sectors 450-525. Probably not important, but I'd like to be
+            // accurate.
+            Some(DiscGuard) => {
+                if relative_sector > 525 && track == 1 {
+                    q[2] = bcd(1);
+                } else {
+                    q[2] = bcd(index as i64);
+                }
+            }
+            _ => {
+                q[2] = bcd(index as i64);
+            } //SecuROM and LibCrypt currently not implemented
+        }
 
         // The next three fields, MIN, SEC, and FRAC, are the
         // running time within each index.
@@ -529,8 +544,19 @@ impl Sector {
         // MIN
         q[3] = bcd(relative_sector_count / 4500);
         // SEC
-        // TODO: Example implementation "If protection is true and protection is [x], else"
-        q[4] = bcd((relative_sector_count / 75) % 60);
+        match _chosen_protection_type {
+            // TODO: SBI and LSD support, CMR1 earlier/nonmain DiscGuard variant
+            Some(DiscGuard) => {
+                if relative_sector >= 675 && relative_sector <= 750 {
+                    q[4] = bcd(29);
+                } else {
+                    q[4] = bcd((relative_sector_count / 75) % 60);
+                }
+            }
+            _ => {
+                q[4] = bcd((relative_sector_count / 75) % 60);
+            } //SecuROM and LibCrypt currently not implemented
+        }
         // FRAC
         q[5] = bcd(relative_sector_count % 75);
         // Next byte is always zero
