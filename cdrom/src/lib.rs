@@ -2,11 +2,11 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
+use crate::DiscProtection::DiscGuard;
 use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
 pub use cue;
 use cue::cd::CD;
 use cue::track;
-use crate::DiscProtection::DiscGuard;
 
 fn lba_to_msf(lba: i64) -> (i64, i64, i64) {
     (lba / 4500, (lba / 75) % 60, lba % 75)
@@ -510,17 +510,18 @@ impl Sector {
         // 01 - First index within the track, or leadout
         match _chosen_protection_type {
             // For some reason, for later/main variant DiscGuard discs, index 02 is only applied for
-            // the q subchannel in sectors 450-525. Probably not important, but I'd like to be 
+            // the q subchannel in sectors 450-525. Probably not important, but I'd like to be
             // accurate.
             Some(DiscGuard) => {
-                if relative_sector > 525 && track == 1 { 
+                if relative_sector > 525 && track == 1 {
                     q[2] = bcd(1);
-                }
-                else{
+                } else {
                     q[2] = bcd(index as i64);
                 }
-            },
-            _ => {q[2] = bcd(index as i64);} //SecuROM and LibCrypt currently not implemented
+            }
+            _ => {
+                q[2] = bcd(index as i64);
+            } //SecuROM and LibCrypt currently not implemented
         }
 
         // The next three fields, MIN, SEC, and FRAC, are the
@@ -548,12 +549,13 @@ impl Sector {
             Some(DiscGuard) => {
                 if relative_sector >= 675 && relative_sector <= 750 {
                     q[4] = bcd(29);
-                }
-                else{
+                } else {
                     q[4] = bcd((relative_sector_count / 75) % 60);
                 }
-            },
-            _ => {q[4] = bcd((relative_sector_count / 75) % 60);} //SecuROM and LibCrypt currently not implemented
+            }
+            _ => {
+                q[4] = bcd((relative_sector_count / 75) % 60);
+            } //SecuROM and LibCrypt currently not implemented
         }
         // FRAC
         q[5] = bcd(relative_sector_count % 75);
