@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
@@ -9,6 +10,16 @@ use cue::track;
 
 fn lba_to_msf(lba: i64) -> (i64, i64, i64) {
     (lba / 4500, (lba / 75) % 60, lba % 75)
+}
+
+// Converts Absolute MSF to Absolute Sector number
+pub fn amsf_to_asec(m: i64, s: i64, f: i64) -> i64 {
+    let mut absolute_sector: i64 = 0;
+    absolute_sector += 4500 * (((m / 16) * 10) + (m % 16));
+    absolute_sector += 75 * (((s / 16) * 10) + (s % 16));
+    absolute_sector += ((f / 16) * 10) + (f % 16);
+
+    absolute_sector
 }
 
 pub struct Disc {
@@ -436,7 +447,12 @@ impl Sector {
     //
     // More information is in ECMA-130:
     // http://www.ecma-international.org/publications/standards/Ecma-130.htm
-    pub fn generate_subchannel(&self, _chosen_protection_type: &Option<DiscProtection>) -> Vec<u8> {
+    pub fn generate_subchannel(
+        &self,
+        _chosen_protection_type: &Option<DiscProtection>,
+        sbi_hash_map: &HashMap<i64, Vec<u8>>,
+        lsd_hash_map: &HashMap<i64, Vec<u8>>,
+    ) -> Vec<u8> {
         // The first sector of a track, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
         // sector uses 0s. (Section 22.2)
@@ -454,6 +470,8 @@ impl Sector {
             self.index.number,
             self.track.mode,
             _chosen_protection_type,
+            sbi_hash_map,
+            lsd_hash_map,
         );
         // The vast majority of real discs write their unused R-W fields as 0s,
         // but at least one real disc used FFs instead. We'll side with the
@@ -469,6 +487,46 @@ impl Sector {
     }
 
     fn generate_q_subchannel(
+        absolute_sector: i64,
+        relative_sector: i64,
+        track: u8,
+        index: u8,
+        track_type: TrackMode,
+        _chosen_protection_type: &Option<DiscProtection>,
+        sbi_hash_map: &HashMap<i64, Vec<u8>>,
+        lsd_hash_map: &HashMap<i64, Vec<u8>>,
+    ) -> Vec<u8> {
+        // LSD/SBI checked without checking for specific protection chosen because technically
+        // speaking, there's no reason you *shouldn't* be able to provide an LSD/SBI file even if
+        // you didn't choose protection
+
+        if let Some(lsd_q) = lsd_hash_map.get(&absolute_sector) {
+            lsd_q.clone()
+        } else if let Some(sbi_q) = sbi_hash_map.get(&absolute_sector) {
+            // It would be surprising if there was a protection that relied on changing the
+            // subchannels in the audio, but either way, no track checking is really necessary
+            // since this brings  all the data anyway.
+            let mut local_sbi_q = sbi_q.clone();
+            // I know this duplicates the crc stuff later on, but for SBI support for securom and
+            // libcrypt, it's probably going to be easier if this branch of the if statement has
+            // all the crc stuff in it that it needs.
+            let crc = crc16(&local_sbi_q, CRC16_INITIAL_CRC);
+            local_sbi_q.push(((crc >> 8) & 0xFF) as u8);
+            local_sbi_q.push((crc & 0xFF) as u8);
+            local_sbi_q
+        } else {
+            Sector::generate_q_subchannel_from_scratch(
+                absolute_sector,
+                relative_sector,
+                track,
+                index,
+                track_type,
+                _chosen_protection_type,
+            )
+        }
+    }
+
+    fn generate_q_subchannel_from_scratch(
         absolute_sector: i64,
         relative_sector: i64,
         track: u8,
@@ -507,7 +565,28 @@ impl Sector {
         // usually only two values are seen:
         // 00 - Pregap or postgap
         // 01 - First index within the track, or leadout
-        q[2] = bcd(index as i64);
+        match _chosen_protection_type {
+            // For some reason, for later/main variant DiscGuard discs, index 02 is only applied for
+            // the q subchannel in sectors 450-525. Probably not important, but I'd like to be
+            // accurate.
+            Some(DiscProtection::DiscGuardScheme2) => {
+                if relative_sector > 525 && track == 1 {
+                    q[2] = bcd(1);
+                } else {
+                    q[2] = bcd(index as i64);
+                }
+            }
+            Some(DiscProtection::DiscGuardScheme1) => {
+                if relative_sector >= 33075 && track == 1 {
+                    q[2] = bcd(1);
+                } else {
+                    q[2] = bcd(index as i64);
+                }
+            }
+            _ => {
+                q[2] = bcd(index as i64);
+            } //SecuROM and LibCrypt currently not implemented
+        }
 
         // The next three fields, MIN, SEC, and FRAC, are the
         // running time within each index.
@@ -518,7 +597,7 @@ impl Sector {
         // In the actual content, this starts at 0 and
         // counts up.
         //
-        // Since bcd doens't represent negative numbers, we
+        // Since bcd doesn't represent negative numbers, we
         // re-negate this; we start at the pregap duration and
         // count down to 0.
         let relative_sector_count = if 0 > relative_sector {
@@ -529,8 +608,25 @@ impl Sector {
         // MIN
         q[3] = bcd(relative_sector_count / 4500);
         // SEC
-        // TODO: Example implementation "If protection is true and protection is [x], else"
-        q[4] = bcd((relative_sector_count / 75) % 60);
+        match _chosen_protection_type {
+            // Nice for convenience, but it wouldn't be unreasonable to remove
+            // this with the expectation that the user should be providing their own
+            // LSD/SBI anyways. Keeping for now, just putting this here for anyone who
+            // may want to consider it in the future.
+
+            // I don't worry about checking for LSD or SBI here since if one was provided, it
+            // will never reach this code anyways.
+            Some(DiscProtection::DiscGuardScheme2) => {
+                if relative_sector >= 675 && relative_sector <= 750 {
+                    q[4] = bcd(29);
+                } else {
+                    q[4] = bcd((relative_sector_count / 75) % 60);
+                }
+            }
+            _ => {
+                q[4] = bcd((relative_sector_count / 75) % 60);
+            } //SecuROM and LibCrypt currently not implemented
+        }
         // FRAC
         q[5] = bcd(relative_sector_count % 75);
         // Next byte is always zero
@@ -554,12 +650,19 @@ impl Sector {
 //TODO: Possible protections, improve descriptions after review
 #[derive(Debug)]
 pub enum DiscProtection {
+    DiscGuardScheme1,
     /// Change one second of sector MSFs
-    DiscGuard,
+    DiscGuardScheme2,
     /// Subchannel-error-based PC protection
-    SecuROM,
+    SecuROMScheme1,
+    SecuROMScheme2,
+    SecuROMScheme3a,
+    SecuROMScheme3b,
+    SecuROMScheme3c,
+    SecuROMScheme4,
     /// Subchannel-error-based PS1 protection
-    LibCrypt,
+    LibCryptScheme1,
+    LibCryptScheme2,
 }
 
 // For more detail, see section 22.3.4.2 of ECMA-130.
@@ -583,11 +686,11 @@ impl Pointer {
 
 #[cfg(test)]
 mod tests {
+    use cue::cd::CD;
+    use std::collections::HashMap;
     use std::fs::{read_to_string, File};
     use std::io::Read;
     use std::{io::Write, path::PathBuf};
-
-    use cue::cd::CD;
 
     use crate::Disc;
 
@@ -623,7 +726,8 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(&None)).unwrap();
+            buf.write_all(&sector.generate_subchannel(&None, &HashMap::new(), &HashMap::new()))
+                .unwrap();
         }
 
         let real_sub_path = paths.one_track_ccd.join("basic_image.sub");
@@ -662,7 +766,8 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(&None)).unwrap();
+            buf.write_all(&sector.generate_subchannel(&None, &HashMap::new(), &HashMap::new()))
+                .unwrap();
         }
 
         let real_sub_path = paths.data_plus_audio_ccd.join("disc.sub");
