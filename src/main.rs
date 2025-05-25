@@ -162,10 +162,7 @@ fn work() -> Result<(), Cue2CCDError> {
     // It seems  best to keep in line with this behavior
 
     // TODO: is this extension check case sensitive?
-    if Path::new(&output_stem.with_extension("sbi"))
-        .file_name()
-        .is_some()
-    {
+    if Path::new(&output_stem.with_extension("sbi")).exists() {
         // SBI files are very small, so it seems best to read the whole thing in first?
         let raw_sbi_data = Some(std::fs::read(Path::new(
             &output_stem.with_extension("sbi"),
