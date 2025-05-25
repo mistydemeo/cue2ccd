@@ -1,7 +1,6 @@
-use std::ffi::OsStr;
 use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use cdrom::cue::cd::CD;
 use cdrom::cue::track::{Track, TrackMode};
