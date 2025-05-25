@@ -164,10 +164,7 @@ fn work() -> Result<(), Cue2CCDError> {
     // TODO: is this extension check case sensitive?
     if Path::new(&output_stem.with_extension("sbi")).exists() {
         // SBI files are very small, so it seems best to read the whole thing in first?
-        let raw_sbi_data = Some(std::fs::read(Path::new(
-            &output_stem.with_extension("sbi"),
-        ))?)
-        .unwrap(); // Already confirmed it was something, so, this should be fine?
+        let raw_sbi_data = std::fs::read(Path::new(&output_stem.with_extension("sbi")))?; // Already confirmed it was something, so, this should be fine?
         let (header, data) = raw_sbi_data.split_at(4);
 
         if header != [83, 66, 73, 00] {
