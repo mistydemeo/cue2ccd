@@ -172,9 +172,9 @@ fn work() -> Result<(), Cue2CCDError> {
             let mut lba: i32 = 0;
             for (byte_index, &item) in chunk.iter().enumerate() {
                 match byte_index {
-                    0 => lba = lba + (4500 * (item as i32)),
-                    1 => lba = lba + (60 * (item as i32)),
-                    2 => lba = lba + (item as i32),
+                    0 => lba += 4500 * (item as i32),
+                    1 => lba += 60 * (item as i32),
+                    2 => lba += item as i32,
                     // Index 3 excluded to ignore dummy 0x01 byte
                     3 => (),
                     _ => q[byte_index - 4] = item,
