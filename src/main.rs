@@ -67,7 +67,6 @@ fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
                 return Err(Cue2CCDError::CookedData {});
             }
             _ => (),
-            _ => (),
         }
     }
     Ok(())
@@ -171,14 +170,14 @@ fn work() -> Result<(), Cue2CCDError> {
         for chunk in data.chunks(14) {
             let mut q = vec![0; 10];
             let mut lba: i32 = 0;
-            for (byteIndex, &item) in chunk.iter().enumerate() {
-                match byteIndex {
+            for (byte_index, &item) in chunk.iter().enumerate() {
+                match byte_index {
                     0 => lba = lba + (4500 * (item as i32)),
                     1 => lba = lba + (60 * (item as i32)),
                     2 => lba = lba + (item as i32),
                     // Index 3 excluded to ignore dummy 0x01 byte
                     3 => (),
-                    _ => q[byteIndex - 4] = item,
+                    _ => q[byte_index - 4] = item,
                 }
             }
             sbi_lba_array.push(lba);
