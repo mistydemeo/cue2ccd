@@ -169,23 +169,17 @@ fn work() -> Result<(), Cue2CCDError> {
             println!("not equal"); // Not sure what to do if for some reason not there
         }
         // should always be multiple of 14
-        for (chunkIndex, chunk) in data.chunks(14).enumerate() {
+        for chunk in data.chunks(14) {
             let mut q = vec![0; 10];
             let mut lba: i32 = 0;
             for (byteIndex, &item) in chunk.iter().enumerate() {
-                if byteIndex < 3 {
-                    q[byteIndex] = item;
-                    // Convert MSF to LBA.
-                    if byteIndex == 0 {
-                        lba = lba + (4500 * (item as i32));
-                    } else if byteIndex == 1 {
-                        lba = lba + (60 * (item as i32));
-                    } else if byteIndex == 2 {
-                        lba = lba + (item as i32);
-                    }
-                } else if byteIndex > 3 {
+                match byteIndex {
+                    0 => lba = lba + (4500 * (item as i32)),
+                    1 => lba = lba + (60 * (item as i32)),
+                    2 => lba = lba + (item as i32),
                     // Index 3 excluded to ignore dummy 0x01 byte
-                    q[byteIndex - 4] = item;
+                    3 => (),
+                    _ => q[byteIndex - 4] = item,
                 }
             }
             sbi_lba_array.push(lba);
