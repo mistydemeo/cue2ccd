@@ -533,7 +533,7 @@ impl Sector {
         // In the actual content, this starts at 0 and
         // counts up.
         //
-        // Since bcd doens't represent negative numbers, we
+        // Since bcd doesn't represent negative numbers, we
         // re-negate this; we start at the pregap duration and
         // count down to 0.
         let relative_sector_count = if 0 > relative_sector {
