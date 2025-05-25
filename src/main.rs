@@ -145,14 +145,11 @@ fn work() -> Result<(), Cue2CCDError> {
     // The entire rest of the file consists of subQ data, specifically consisting of the actual
     // MSF current subQ was read from, followed by a dummy 0x01 byte, followed by the first 10 bytes
     // of that subQ (so, everything but the CRC16) The exclusion of the CRC16 is obviously
-    // annoying, *especially*  for SecuROM and LibCrypt. LSD is a better file format, but at the
-    // moment, redump will only  generate LSD files for PS1 discs, and we do not have the power to
+    // annoying, *especially* for SecuROM and LibCrypt. LSD is a better file format, but at the
+    // moment, redump will only generate LSD files for PS1 discs, and we do not have the power to
     // change the website; so, until a successor website exists, SBI support is necessary. It's
     // also still preferred by a lot of people and emulators for PS1 for some reason, despite
     // being worse than LSD.
-
-    //let mut sbi_data =  Some(vec<u8>);
-    // Some(output_stem.with_extension("sbi").file_name());
 
     let mut sbi_lba_array: Vec<i32> = Vec::new();
     let mut sbi_data: Vec<Vec<u8>> = Vec::new();
@@ -168,7 +165,7 @@ fn work() -> Result<(), Cue2CCDError> {
         let (header, data) = raw_sbi_data.split_at(4);
 
         if header != [83, 66, 73, 00] {
-            // Checks for required "[S][B][I][0x00] header
+            // Checks for required [S][B][I][0x00] header
             println!("not equal"); // Not sure what to do if for some reason not there
         }
         // should always be multiple of 14
