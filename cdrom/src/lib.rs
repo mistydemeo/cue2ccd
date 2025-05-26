@@ -437,12 +437,12 @@ impl Sector {
     // More information is in ECMA-130:
     // http://www.ecma-international.org/publications/standards/Ecma-130.htm
     pub fn generate_subchannel(&self, _chosen_protection_type: &Option<DiscProtection>) -> Vec<u8> {
-        // The first sector of the disc, and only the first sector,
+        // The first sector of a track, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
-        // sector uses 0s.
+        // sector uses 0s. (Section 22.2)
         // For players which ignore the Q subchannel, this allows
         // locating the start of tracks.
-        let mut p = if self.start == 0 || self.index.number == 0 {
+        let mut p = if self.relative_position == 0 || self.index.number == 0 {
             vec![0xFF; 12]
         } else {
             vec![0; 12]
