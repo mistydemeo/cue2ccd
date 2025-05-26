@@ -93,6 +93,52 @@ fn get_unique_tracks(tracks: &[Track]) -> Vec<String> {
     files
 }
 
+// Technically speaking, there's no reason you *shouldn't* be able to provide an SBI/LSD
+// file even if you didn't choose protection
+
+// SBI File Format:
+// Starts with header 0x53 0x42 0x49 0x00 ('S' 'B' 'I' '0x00')
+// The entire rest of the file consists of subQ data, specifically consisting of the actual
+// MSF current subQ was read from, followed by a dummy 0x01 byte, followed by the first 10 bytes
+// of that subQ (so, everything but the CRC16) The exclusion of the CRC16 is obviously
+// annoying, *especially* for SecuROM and LibCrypt. LSD is a better file format, but at the
+// moment, redump will only generate LSD files for PS1 discs, and we do not have the power to
+// change the website; so, until a successor website exists, SBI support is necessary. It's
+// also still preferred by a lot of people and emulators for PS1 for some reason, despite
+// being worse than LSD.
+fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<(Vec<i32>, Vec<Vec<u8>>), Cue2CCDError> {
+    // SBI files have never been defined in the cuesheet, and programs (mainly just PS1
+    // emulators so far) that make use of them simply check if there's an SBI file with the
+    // same basename next to the .cue. If one exists, they use it, otherwise they don't.
+    // It seems  best to keep in line with this behavior
+    let mut sbi_lba_array: Vec<i32> = Vec::new();
+    let mut sbi_data: Vec<Vec<u8>> = Vec::new();
+    let (header, data) = raw_sbi_data.split_at(4);
+
+    if header != [83, 66, 73, 00] {
+        // Checks for required [S][B][I][0x00] header
+        return Err(Cue2CCDError::InvalidSBIError {});
+    }
+    // should always be multiple of 14
+    for chunk in data.chunks(14) {
+        let mut q = vec![0; 10];
+        let mut lba: i32 = 0;
+        for (byte_index, &item) in chunk.iter().enumerate() {
+            match byte_index {
+                0 => lba += 4500 * (item as i32),
+                1 => lba += 60 * (item as i32),
+                2 => lba += item as i32,
+                // Index 3 excluded to ignore dummy 0x01 byte
+                3 => (),
+                _ => q[byte_index - 4] = item,
+            }
+        }
+        sbi_lba_array.push(lba);
+        sbi_data.push(q);
+    }
+    Ok((sbi_lba_array, sbi_data))
+}
+
 fn main() -> Result<(), miette::Report> {
     work()?;
     Ok(())
@@ -139,56 +185,6 @@ fn work() -> Result<(), Cue2CCDError> {
         _ => return Err(Cue2CCDError::InvalidProtectionError {}),
     };
 
-    // Technically speaking, there's no reason you *shouldn't* be able to provide an SBI/LSD
-    // file even if you didn't choose protection
-
-    // SBI File Format:
-    // Starts with header 0x53 0x42 0x49 0x00 ('S' 'B' 'I' '0x00')
-    // The entire rest of the file consists of subQ data, specifically consisting of the actual
-    // MSF current subQ was read from, followed by a dummy 0x01 byte, followed by the first 10 bytes
-    // of that subQ (so, everything but the CRC16) The exclusion of the CRC16 is obviously
-    // annoying, *especially* for SecuROM and LibCrypt. LSD is a better file format, but at the
-    // moment, redump will only generate LSD files for PS1 discs, and we do not have the power to
-    // change the website; so, until a successor website exists, SBI support is necessary. It's
-    // also still preferred by a lot of people and emulators for PS1 for some reason, despite
-    // being worse than LSD.
-
-    let mut sbi_lba_array: Vec<i32> = Vec::new();
-    let mut sbi_data: Vec<Vec<u8>> = Vec::new();
-    // SBI files have never been defined in the cuesheet, and programs (mainly just PS1
-    // emulators so far) that make use of them simply check if there's an SBI file with the
-    // same basename next to the .cue. If one exists, they use it, otherwise they don't.
-    // It seems  best to keep in line with this behavior
-
-    // TODO: is this extension check case sensitive?
-    if Path::new(&output_stem.with_extension("sbi")).exists() {
-        // SBI files are very small, so it seems best to read the whole thing in first?
-        let raw_sbi_data = std::fs::read(Path::new(&output_stem.with_extension("sbi")))?; // Already confirmed it was something, so, this should be fine?
-        let (header, data) = raw_sbi_data.split_at(4);
-
-        if header != [83, 66, 73, 00] {
-            // Checks for required [S][B][I][0x00] header
-            return Err(Cue2CCDError::InvalidSBIError {});
-        }
-        // should always be multiple of 14
-        for chunk in data.chunks(14) {
-            let mut q = vec![0; 10];
-            let mut lba: i32 = 0;
-            for (byte_index, &item) in chunk.iter().enumerate() {
-                match byte_index {
-                    0 => lba += 4500 * (item as i32),
-                    1 => lba += 60 * (item as i32),
-                    2 => lba += item as i32,
-                    // Index 3 excluded to ignore dummy 0x01 byte
-                    3 => (),
-                    _ => q[byte_index - 4] = item,
-                }
-            }
-            sbi_lba_array.push(lba);
-            sbi_data.push(q);
-        }
-    }
-
     // We validate that the track modes are compatible. BIN/CUE can be
     // a variety of different formats, including WAVE files and "cooked"
     // tracks with no error correction metadata. We need all raw files in
@@ -205,6 +201,19 @@ fn work() -> Result<(), Cue2CCDError> {
         .collect::<Vec<String>>();
     if !missing_files.is_empty() {
         return Err(Cue2CCDError::MissingFilesError { missing_files });
+    }
+
+    let mut sbi_lba_array: Vec<i32> = Vec::new();
+    let mut sbi_data: Vec<Vec<u8>> = Vec::new();
+
+    // TODO: is this extension check case sensitive?
+    if Path::new(&output_stem.with_extension("sbi")).exists() {
+        // SBI files are very small, so it seems best to read the whole thing in first?
+        let result = generate_sbi_data(std::fs::read(Path::new(
+            &output_stem.with_extension("sbi"),
+        ))?)?;
+        sbi_lba_array = result.0;
+        sbi_data = result.1;
     }
 
     let sub_target = output_stem.with_extension("sub");
