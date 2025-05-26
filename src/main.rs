@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -99,22 +100,21 @@ fn get_unique_tracks(tracks: &[Track]) -> Vec<String> {
 // SBI File Format:
 // Starts with header 0x53 0x42 0x49 0x00 ('S' 'B' 'I' '0x00')
 // The entire rest of the file consists of subQ data, specifically consisting of the actual
-// MSF current subQ was read from, followed by a dummy 0x01 byte, followed by the first 10 bytes
+// AMSF current subQ was read from, followed by a dummy 0x01 byte, followed by the first 10 bytes
 // of that subQ (so, everything but the CRC16) The exclusion of the CRC16 is obviously
 // annoying, *especially* for SecuROM and LibCrypt. LSD is a better file format, but at the
 // moment, redump will only generate LSD files for PS1 discs, and we do not have the power to
 // change the website; so, until a successor website exists, SBI support is necessary. It's
 // also still preferred by a lot of people and emulators for PS1 for some reason, despite
 // being worse than LSD.
-fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<(Vec<i32>, Vec<Vec<u8>>), Cue2CCDError> {
+fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<(HashMap<i64, Vec<u8>>), Cue2CCDError> {
     // SBI files have never been defined in the cuesheet, and programs (mainly just PS1
     // emulators so far) that make use of them simply check if there's an SBI file with the
     // same basename next to the .cue. If one exists, they use it, otherwise they don't.
     // It seems  best to keep in line with this behavior
-    let mut sbi_lba_array: Vec<i32> = Vec::new();
-    let mut sbi_data: Vec<Vec<u8>> = Vec::new();
-    let (header, data) = raw_sbi_data.split_at(4);
 
+    let (header, data) = raw_sbi_data.split_at(4);
+    let mut hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
     if header != [83, 66, 73, 00] {
         // Checks for required [S][B][I][0x00] header
         return Err(Cue2CCDError::InvalidSBIError {});
@@ -122,21 +122,24 @@ fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<(Vec<i32>, Vec<Vec<u8>>), 
     // should always be multiple of 14
     for chunk in data.chunks(14) {
         let mut q = vec![0; 10];
-        let mut lba: i32 = 0;
+        // These don't really need to be muts, but, they should always be getting set in the
+        // enumeration, and it makes things easier to not have to pass them as options
+        let mut m: i64 = 0;
+        let mut s: i64 = 0;
+        let mut f: i64 = 0;
         for (byte_index, &item) in chunk.iter().enumerate() {
             match byte_index {
-                0 => lba += 4500 * (item as i32),
-                1 => lba += 60 * (item as i32),
-                2 => lba += item as i32,
+                0 => m = item as i64,
+                1 => s = item as i64,
+                2 => f = item as i64,
                 // Index 3 excluded to ignore dummy 0x01 byte
                 3 => (),
                 _ => q[byte_index - 4] = item,
             }
         }
-        sbi_lba_array.push(lba);
-        sbi_data.push(q);
+        hash_map.insert(cdrom::amsf_to_asec(m, s, f), q);
     }
-    Ok((sbi_lba_array, sbi_data))
+    Ok((hash_map))
 }
 
 fn main() -> Result<(), miette::Report> {
@@ -203,15 +206,15 @@ fn work() -> Result<(), Cue2CCDError> {
         return Err(Cue2CCDError::MissingFilesError { missing_files });
     }
 
-    let mut sbi_lba_array: Vec<i32> = Vec::new();
-    let mut sbi_data: Vec<Vec<u8>> = Vec::new();
+    let mut sbi_hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
 
     // TODO: is this extension check case sensitive?
     if Path::new(&output_stem.with_extension("sbi")).exists() {
         // SBI files are very small, so it seems best to read the whole thing in first?
-        let (sbi_lba_array, sbi_data) = generate_sbi_data(std::fs::read(Path::new(
+        let (temp_hashmap) = generate_sbi_data(std::fs::read(Path::new(
             &output_stem.with_extension("sbi"),
         ))?)?;
+        sbi_hash_map = temp_hashmap;
     }
 
     let sub_target = output_stem.with_extension("sub");
@@ -219,7 +222,8 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let disc = Disc::from_cuesheet(cd, root);
     for sector in disc.sectors() {
-        sub_write.write_all(&sector.generate_subchannel(&chosen_protection_type))?;
+        sub_write
+            .write_all(&sector.generate_subchannel(&chosen_protection_type, Some(&sbi_hash_map)))?;
     }
 
     let ccd_target = output_stem.with_extension("ccd");

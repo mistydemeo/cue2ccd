@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
@@ -10,6 +11,16 @@ use cue::track;
 
 fn lba_to_msf(lba: i64) -> (i64, i64, i64) {
     (lba / 4500, (lba / 75) % 60, lba % 75)
+}
+
+// Converts Absolute MSF to Absolute Sector number
+pub fn amsf_to_asec(m: i64, s: i64, f: i64) -> (i64) {
+    let mut absolute_sector: i64 = 0;
+    absolute_sector += 4500 * (((m / 16) * 10) + (m % 16));
+    absolute_sector += 75 * (((s / 16) * 10) + (s % 16));
+    absolute_sector += ((f / 16) * 10) + (f % 16);
+
+    return absolute_sector;
 }
 
 pub struct Disc {
@@ -437,7 +448,11 @@ impl Sector {
     //
     // More information is in ECMA-130:
     // http://www.ecma-international.org/publications/standards/Ecma-130.htm
-    pub fn generate_subchannel(&self, _chosen_protection_type: &Option<DiscProtection>) -> Vec<u8> {
+    pub fn generate_subchannel(
+        &self,
+        _chosen_protection_type: &Option<DiscProtection>,
+        sbi_hash_map: Option<&HashMap<i64, Vec<u8>>>,
+    ) -> Vec<u8> {
         // The first sector of the disc, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
         // sector uses 0s.
@@ -455,6 +470,7 @@ impl Sector {
             self.index.number,
             self.track.mode,
             _chosen_protection_type,
+            sbi_hash_map,
         );
         // The vast majority of real discs write their unused R-W fields as 0s,
         // but at least one real disc used FFs instead. We'll side with the
@@ -476,104 +492,120 @@ impl Sector {
         index: u8,
         track_type: TrackMode,
         _chosen_protection_type: &Option<DiscProtection>,
+        sbi_hash_map: Option<&HashMap<i64, Vec<u8>>>,
     ) -> Vec<u8> {
         // This channel made up of a sequence of bits; we'll start by
         // zeroing it out, then setting individual bits.
         let mut q = vec![0; 12];
 
-        // First four bits are the control field.
-        // We only care about setting the data bit, 1; the others are
-        // irrelevant for this application.
-        match track_type {
-            TrackMode::Audio => (),
-            _ => q[0] |= 1 << 6,
-        };
+        // It would be insane if there was a protection that relied on changing the subchannels
+        // in the audio, but either way, no checking is really necessary since this brings all
+        // the data anyways.
 
-        // Next four bits indicate the mode of the Q channel.
-        // There are three modes:
-        // * 1 - Table of contents (used during the lead-in)
-        // * 2 - Media Catalog Number
-        // * 3 - International Standard Recording Code (ISRC)
-        // In practice, we're always generating mode 1
-        // every sector so we'll hardcode this.
-        // Note that the cuesheet *can* contain the catalog number,
-        // so it'd be possible for us to set this, but libcue doesn't
-        // expose a getter for that; it's simpler just to skip it.
-        q[0] |= 1 << 0;
-        // OK, it's data time! This is the next 9 bytes.
-        // This contains timing info for the current track.
-        q[1] = bcd(track as i64);
-
-        // Next is the index. While it supports values up to 99,
-        // usually only two values are seen:
-        // 00 - Pregap or postgap
-        // 01 - First index within the track, or leadout
-        match _chosen_protection_type {
-            // For some reason, for later/main variant DiscGuard discs, index 02 is only applied for
-            // the q subchannel in sectors 450-525. Probably not important, but I'd like to be
-            // accurate.
-            Some(DiscGuard) => {
-                if relative_sector > 525 && track == 1 {
-                    q[2] = bcd(1);
-                } else {
-                    q[2] = bcd(index as i64);
-                }
-            }
-            _ => {
-                q[2] = bcd(index as i64);
-            } //SecuROM and LibCrypt currently not implemented
-        }
-
-        // The next three fields, MIN, SEC, and FRAC, are the
-        // running time within each index.
-        // FRAC is a unit of 1/75th of a second, e.g. the
-        // duration of exactly one sector.
-        // In the pregap, this starts at negative the
-        // pregap duration and counts up to 0.
-        // In the actual content, this starts at 0 and
-        // counts up.
-        //
-        // Since bcd doesn't represent negative numbers, we
-        // re-negate this; we start at the pregap duration and
-        // count down to 0.
-        let relative_sector_count = if 0 > relative_sector {
-            0 - relative_sector
+        if !sbi_hash_map.is_none() && sbi_hash_map.unwrap().contains_key(&absolute_sector) {
+            let mut local_sbi_q = sbi_hash_map.unwrap().get(&absolute_sector).unwrap().clone();
+            // I know this duplicates the crc stuff later on, but for SBI support for securom and
+            // libcrypt, it's probably going to be easier if this branch of the if statement has
+            // all the crc stuff in it it needs.
+            let crc = crc16(&local_sbi_q, CRC16_INITIAL_CRC);
+            local_sbi_q.push(((crc >> 8) & 0xFF) as u8);
+            local_sbi_q.push((crc & 0xFF) as u8);
+            local_sbi_q
         } else {
-            relative_sector
-        };
-        // MIN
-        q[3] = bcd(relative_sector_count / 4500);
-        // SEC
-        match _chosen_protection_type {
-            // TODO: SBI and LSD support, CMR1 earlier/nonmain DiscGuard variant
-            Some(DiscGuard) => {
-                if relative_sector >= 675 && relative_sector <= 750 {
-                    q[4] = bcd(29);
-                } else {
-                    q[4] = bcd((relative_sector_count / 75) % 60);
-                }
-            }
-            _ => {
-                q[4] = bcd((relative_sector_count / 75) % 60);
-            } //SecuROM and LibCrypt currently not implemented
-        }
-        // FRAC
-        q[5] = bcd(relative_sector_count % 75);
-        // Next byte is always zero
-        q[6] = 0;
-        // The next three bytes provide an absolute timestamp,
-        // rather than a timestamp within the current track.
-        // These three fields, A-MIN, A-SEC, and A-FRAC, are
-        // stored the same way as the relative timestamps.
-        q[7] = bcd(absolute_sector / 4500);
-        q[8] = bcd((absolute_sector / 75) % 60);
-        q[9] = bcd(absolute_sector % 75);
-        // The last two bytes contain a CRC of the main data.
-        let crc = crc16(&q[0..10], CRC16_INITIAL_CRC);
-        q[10] = ((crc >> 8) & 0xFF) as u8;
-        q[11] = (crc & 0xFF) as u8;
+            // First four bits are the control field.
+            // We only care about setting the data bit, 1; the others are
+            // irrelevant for this application.
+            match track_type {
+                TrackMode::Audio => (),
+                _ => q[0] |= 1 << 6,
+            };
 
-        q
+            // Next four bits indicate the mode of the Q channel.
+            // There are three modes:
+            // * 1 - Table of contents (used during the lead-in)
+            // * 2 - Media Catalog Number
+            // * 3 - International Standard Recording Code (ISRC)
+            // In practice, we're always generating mode 1
+            // every sector so we'll hardcode this.
+            // Note that the cuesheet *can* contain the catalog number,
+            // so it'd be possible for us to set this, but libcue doesn't
+            // expose a getter for that; it's simpler just to skip it.
+            q[0] |= 1 << 0;
+            // OK, it's data time! This is the next 9 bytes.
+            // This contains timing info for the current track.
+            q[1] = bcd(track as i64);
+
+            // Next is the index. While it supports values up to 99,
+            // usually only two values are seen:
+            // 00 - Pregap or postgap
+            // 01 - First index within the track, or leadout
+            match _chosen_protection_type {
+                // For some reason, for later/main variant DiscGuard discs, index 02 is only applied for
+                // the q subchannel in sectors 450-525. Probably not important, but I'd like to be
+                // accurate.
+                Some(DiscGuard) => {
+                    if relative_sector > 525 && track == 1 {
+                        q[2] = bcd(1);
+                    } else {
+                        q[2] = bcd(index as i64);
+                    }
+                }
+                _ => {
+                    q[2] = bcd(index as i64);
+                } //SecuROM and LibCrypt currently not implemented
+            }
+
+            // The next three fields, MIN, SEC, and FRAC, are the
+            // running time within each index.
+            // FRAC is a unit of 1/75th of a second, e.g. the
+            // duration of exactly one sector.
+            // In the pregap, this starts at negative the
+            // pregap duration and counts up to 0.
+            // In the actual content, this starts at 0 and
+            // counts up.
+            //
+            // Since bcd doesn't represent negative numbers, we
+            // re-negate this; we start at the pregap duration and
+            // count down to 0.
+            let relative_sector_count = if 0 > relative_sector {
+                0 - relative_sector
+            } else {
+                relative_sector
+            };
+            // MIN
+            q[3] = bcd(relative_sector_count / 4500);
+            // SEC
+            match _chosen_protection_type {
+                // TODO: SBI and LSD support, CMR1 earlier/nonmain DiscGuard variant
+                Some(DiscGuard) => {
+                    if relative_sector >= 675 && relative_sector <= 750 {
+                        q[4] = bcd(29);
+                    } else {
+                        q[4] = bcd((relative_sector_count / 75) % 60);
+                    }
+                }
+                _ => {
+                    q[4] = bcd((relative_sector_count / 75) % 60);
+                } //SecuROM and LibCrypt currently not implemented
+            }
+            // FRAC
+            q[5] = bcd(relative_sector_count % 75);
+            // Next byte is always zero
+            q[6] = 0;
+            // The next three bytes provide an absolute timestamp,
+            // rather than a timestamp within the current track.
+            // These three fields, A-MIN, A-SEC, and A-FRAC, are
+            // stored the same way as the relative timestamps.
+            q[7] = bcd(absolute_sector / 4500);
+            q[8] = bcd((absolute_sector / 75) % 60);
+            q[9] = bcd(absolute_sector % 75);
+            // The last two bytes contain a CRC of the main data.
+            let crc = crc16(&q[0..10], CRC16_INITIAL_CRC);
+            q[10] = ((crc >> 8) & 0xFF) as u8;
+            q[11] = (crc & 0xFF) as u8;
+
+            q
+        }
     }
 }
 
@@ -649,7 +681,8 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(&None)).unwrap();
+            buf.write_all(&sector.generate_subchannel(&None, None))
+                .unwrap();
         }
 
         let real_sub_path = paths.one_track_ccd.join("basic_image.sub");
@@ -688,7 +721,8 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(&None)).unwrap();
+            buf.write_all(&sector.generate_subchannel(&None, None))
+                .unwrap();
         }
 
         let real_sub_path = paths.data_plus_audio_ccd.join("disc.sub");
