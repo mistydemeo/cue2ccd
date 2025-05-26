@@ -502,8 +502,8 @@ impl Sector {
         // in the audio, but either way, no checking is really necessary since this brings all
         // the data anyways.
 
-        if !sbi_hash_map.is_none() && sbi_hash_map.unwrap().contains_key(&absolute_sector) {
-            let mut local_sbi_q = sbi_hash_map.unwrap().get(&absolute_sector).unwrap().clone();
+        if let Some(sbi_q) = sbi_hash_map.and_then(|m| m.get(&absolute_sector)) {
+            let mut local_sbi_q = sbi_q.clone();
             // I know this duplicates the crc stuff later on, but for SBI support for securom and
             // libcrypt, it's probably going to be easier if this branch of the if statement has
             // all the crc stuff in it it needs.
