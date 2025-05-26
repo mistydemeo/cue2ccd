@@ -219,7 +219,7 @@ impl<'a> SectorIterator<'a> {
                 // Edge of the index is either the start of the next index (if there's
                 // another index) or the end of the track.
                 let boundary = if let Some(next) = track.indices.get(i + 1) {
-                    next.start
+                    next.start - 1
                 } else {
                     track.start + track.length
                 };
@@ -453,12 +453,12 @@ impl Sector {
         _chosen_protection_type: &Option<DiscProtection>,
         sbi_hash_map: Option<&HashMap<i64, Vec<u8>>>,
     ) -> Vec<u8> {
-        // The first sector of the disc, and only the first sector,
+        // The first sector of a track, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
-        // sector uses 0s.
+        // sector uses 0s. (Section 22.2)
         // For players which ignore the Q subchannel, this allows
         // locating the start of tracks.
-        let mut p = if self.start == 0 || self.index.number == 0 {
+        let mut p = if self.relative_position == 0 || self.index.number == 0 {
             vec![0xFF; 12]
         } else {
             vec![0; 12]
