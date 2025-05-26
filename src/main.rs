@@ -25,6 +25,10 @@ enum Cue2CCDError {
     #[error("Protection flag provided with invalid protection type!")]
     InvalidProtectionError {},
 
+    // Thrown if SBI file exists but doesn't have the correct SBI header
+    #[error("Invalid SBI file!")]
+    InvalidSBIError {},
+
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing .wav files are not compatible."))]
     WaveFile {},
@@ -164,7 +168,7 @@ fn work() -> Result<(), Cue2CCDError> {
 
         if header != [83, 66, 73, 00] {
             // Checks for required [S][B][I][0x00] header
-            println!("not equal"); // Not sure what to do if for some reason not there
+            return Err(Cue2CCDError::InvalidSBIError {});
         }
         // should always be multiple of 14
         for chunk in data.chunks(14) {
