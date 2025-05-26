@@ -14,13 +14,13 @@ fn lba_to_msf(lba: i64) -> (i64, i64, i64) {
 }
 
 // Converts Absolute MSF to Absolute Sector number
-pub fn amsf_to_asec(m: i64, s: i64, f: i64) -> (i64) {
+pub fn amsf_to_asec(m: i64, s: i64, f: i64) -> i64 {
     let mut absolute_sector: i64 = 0;
     absolute_sector += 4500 * (((m / 16) * 10) + (m % 16));
     absolute_sector += 75 * (((s / 16) * 10) + (s % 16));
     absolute_sector += ((f / 16) * 10) + (f % 16);
 
-    return absolute_sector;
+    absolute_sector
 }
 
 pub struct Disc {
