@@ -207,7 +207,7 @@ impl<'a> SectorIterator<'a> {
                 // Edge of the index is either the start of the next index (if there's
                 // another index) or the end of the track.
                 let boundary = if let Some(next) = track.indices.get(i + 1) {
-                    next.start
+                    next.start - 1
                 } else {
                     track.start + track.length
                 };
