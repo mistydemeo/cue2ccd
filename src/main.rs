@@ -107,7 +107,7 @@ fn get_unique_tracks(tracks: &[Track]) -> Vec<String> {
 // change the website; so, until a successor website exists, SBI support is necessary. It's
 // also still preferred by a lot of people and emulators for PS1 for some reason, despite
 // being worse than LSD.
-fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<(HashMap<i64, Vec<u8>>), Cue2CCDError> {
+fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<HashMap<i64, Vec<u8>>, Cue2CCDError> {
     // SBI files have never been defined in the cuesheet, and programs (mainly just PS1
     // emulators so far) that make use of them simply check if there's an SBI file with the
     // same basename next to the .cue. If one exists, they use it, otherwise they don't.
@@ -139,7 +139,7 @@ fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<(HashMap<i64, Vec<u8>>), C
         }
         hash_map.insert(cdrom::amsf_to_asec(m, s, f), q);
     }
-    Ok((hash_map))
+    Ok(hash_map)
 }
 
 fn main() -> Result<(), miette::Report> {
@@ -211,7 +211,7 @@ fn work() -> Result<(), Cue2CCDError> {
     // TODO: is this extension check case sensitive?
     if Path::new(&output_stem.with_extension("sbi")).exists() {
         // SBI files are very small, so it seems best to read the whole thing in first?
-        let (temp_hashmap) = generate_sbi_data(std::fs::read(Path::new(
+        let temp_hashmap = generate_sbi_data(std::fs::read(Path::new(
             &output_stem.with_extension("sbi"),
         ))?)?;
         sbi_hash_map = temp_hashmap;
