@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
-use crate::DiscProtection::DiscGuard;
 use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
 pub use cue;
 use cue::cd::CD;
@@ -504,11 +503,10 @@ impl Sector {
         if let Some(lsd_q) = lsd_hash_map.get(&absolute_sector) {
             lsd_q.clone()
         } else if let Some(sbi_q) = sbi_hash_map.get(&absolute_sector) {
-            // It would be insane if there was a protection that relied on changing the subchannels
-            // in the audio, but either way, no track checking is really necessary since this brings
-            // all the data anyway.
+            // It would be surprising if there was a protection that relied on changing the
+            // subchannels in the audio, but either way, no track checking is really necessary
+            // since this brings  all the data anyway.
             let mut local_sbi_q = sbi_q.clone();
-
             // I know this duplicates the crc stuff later on, but for SBI support for securom and
             // libcrypt, it's probably going to be easier if this branch of the if statement has
             // all the crc stuff in it that it needs.
@@ -552,10 +550,15 @@ impl Sector {
                 // For some reason, for later/main variant DiscGuard discs, index 02 is only applied for
                 // the q subchannel in sectors 450-525. Probably not important, but I'd like to be
                 // accurate.
-                Some(DiscGuard) => {
-                    if true && relative_sector > 525 && track == 1 { // TODO: check "is main var"
+                Some(DiscProtection::DiscGuardScheme2) => {
+                    if relative_sector > 525 && track == 1 {
                         q[2] = bcd(1);
-                    } else if false && relative_sector >= 33075 && track == 1 { // TODO: early var
+                    } else {
+                        q[2] = bcd(index as i64);
+                    }
+                }
+                Some(DiscProtection::DiscGuardScheme1) => {
+                    if relative_sector >= 33075 && track == 1 {
                         q[2] = bcd(1);
                     } else {
                         q[2] = bcd(index as i64);
@@ -587,13 +590,15 @@ impl Sector {
             q[3] = bcd(relative_sector_count / 4500);
             // SEC
             match _chosen_protection_type {
-                // TODO: Nice for convenience, but it wouldn't be unreasonable to remove
-                // TODO: this with the expectation that the user should be providing their own
-                // TODO: LSD/SBI anyways. Keeping for now, just putting this here for anyone who
-                // TODO: may want to consider it in the future.
-                
-                Some(DiscGuard) => {
-                    if true && relative_sector >= 675 && relative_sector <= 750 { // TODO: check "is main var"
+                // Nice for convenience, but it wouldn't be unreasonable to remove
+                // this with the expectation that the user should be providing their own
+                // LSD/SBI anyways. Keeping for now, just putting this here for anyone who
+                // may want to consider it in the future.
+
+                // I don't worry about checking for LSD or SBI here since if one was provided, it
+                // will never reach this code anyways.
+                Some(DiscProtection::DiscGuardScheme2) => {
+                    if relative_sector >= 675 && relative_sector <= 750 {
                         q[4] = bcd(29);
                     } else {
                         q[4] = bcd((relative_sector_count / 75) % 60);
@@ -627,12 +632,19 @@ impl Sector {
 //TODO: Possible protections, improve descriptions after review
 #[derive(Debug)]
 pub enum DiscProtection {
+    DiscGuardScheme1,
     /// Change one second of sector MSFs
-    DiscGuard,
+    DiscGuardScheme2,
     /// Subchannel-error-based PC protection
-    SecuROM,
+    SecuROMScheme1,
+    SecuROMScheme2,
+    SecuROMScheme3a,
+    SecuROMScheme3b,
+    SecuROMScheme3c,
+    SecuROMScheme4,
     /// Subchannel-error-based PS1 protection
-    LibCrypt,
+    LibCryptScheme1,
+    LibCryptScheme2,
 }
 
 // For more detail, see section 22.3.4.2 of ECMA-130.

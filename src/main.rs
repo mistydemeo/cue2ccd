@@ -30,6 +30,12 @@ enum Cue2CCDError {
     #[error("Invalid SBI file!")]
     InvalidSBIError {},
 
+    #[error("LSD does not match specified protection!")]
+    InvalidProtectionLSDError {},
+
+    #[error("SBI does not match specified protection!")]
+    InvalidProtectionSBIError {},
+
     #[error("This tool only supports raw disc images")]
     #[diagnostic(help("cuesheets containing .wav files are not compatible."))]
     WaveFile {},
@@ -207,14 +213,17 @@ fn work() -> Result<(), Cue2CCDError> {
     let cd = CD::parse(cue_sheet)?;
 
     let tracks = cd.tracks();
-    let chosen_protection_type: Option<DiscProtection> = match args
+
+    let mut chosen_protection_type: Option<DiscProtection> = None;
+    // Technically mostly unused for now, but this will need to be here.
+    let temp_chosen_protection_type: Option<&str> = match args
         .protection_type
         .map(|t| t.to_ascii_lowercase())
         .as_deref()
     {
-        Some("discguard") => Some(DiscProtection::DiscGuard),
-        Some("securom") => Some(DiscProtection::SecuROM),
-        Some("libcrypt") => Some(DiscProtection::LibCrypt),
+        Some("discguard") => Some("discguard"),
+        Some("securom") => Some("securom"),
+        Some("libcrypt") => Some("libcrypt"),
         None => None,
         _ => return Err(Cue2CCDError::InvalidProtectionError {}),
     };
@@ -251,12 +260,28 @@ fn work() -> Result<(), Cue2CCDError> {
         let temp_hashmap = generate_lsd_data(std::fs::read(Path::new(
             &output_stem.with_extension("lsd"),
         ))?)?;
+        let len = temp_hashmap.len();
+        if len == 76 {
+            chosen_protection_type = Some(DiscProtection::DiscGuardScheme2);
+        } else if len == 600 {
+            chosen_protection_type = Some(DiscProtection::DiscGuardScheme1);
+        } else if temp_chosen_protection_type == Some("discguard") {
+            return Err(Cue2CCDError::InvalidProtectionLSDError {});
+        }
         lsd_hash_map = temp_hashmap;
     } else if Path::new(&output_stem.with_extension("sbi")).exists() {
         // SBI files are very small, so it seems best to read the whole thing in first?
         let temp_hashmap = generate_sbi_data(std::fs::read(Path::new(
             &output_stem.with_extension("sbi"),
         ))?)?;
+        let len = temp_hashmap.len();
+        if len == 76 {
+            chosen_protection_type = Some(DiscProtection::DiscGuardScheme2);
+        } else if len == 600 {
+            chosen_protection_type = Some(DiscProtection::DiscGuardScheme1);
+        } else if temp_chosen_protection_type == Some("discguard") {
+            return Err(Cue2CCDError::InvalidProtectionSBIError {});
+        }
         sbi_hash_map = temp_hashmap;
     }
 
