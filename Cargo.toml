@@ -15,7 +15,7 @@ thiserror = "1.0.40"
 
 [dependencies.cdrom]
 path = "cdrom"
-version = "0.2.0"
+version = "0.2.1"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
