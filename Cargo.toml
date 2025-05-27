@@ -1,6 +1,6 @@
 [package]
 name = "cue2ccd"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 homepage = "https://www.mistys-internet.website/cue2ccd/"
 description = "Tool to convert BIN/CUE disc images to CCD/IMG/SUB"

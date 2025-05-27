@@ -1,3 +1,10 @@
+# Version 1.0.3 (2025-05-26)
+
+This release fixes two minor bugs with subchannel generation. These caused certain bits of timing information to be off by a single sector. It's unlikely this caused any discs not to work, but it may have caused very minor audio sync issues for certain discs.
+
+* Fixes an off-by-one error in the index location in the subchannel. (@HeroponRikiBestest - #30)
+* Fixes an error in the position where the P subchannel should end. (@mistydemeo - #32)
+
 # Version 1.0.2 (2025-05-20)
 
 This fixes several bugs:
