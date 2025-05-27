@@ -553,7 +553,9 @@ impl Sector {
                 // the q subchannel in sectors 450-525. Probably not important, but I'd like to be
                 // accurate.
                 Some(DiscGuard) => {
-                    if relative_sector > 525 && track == 1 {
+                    if true && relative_sector > 525 && track == 1 { // TODO: check "is main var"
+                        q[2] = bcd(1);
+                    } else if false && relative_sector >= 33075 && track == 1 { // TODO: early var
                         q[2] = bcd(1);
                     } else {
                         q[2] = bcd(index as i64);
@@ -585,9 +587,13 @@ impl Sector {
             q[3] = bcd(relative_sector_count / 4500);
             // SEC
             match _chosen_protection_type {
-                // TODO: SBI and LSD support, CMR1 earlier/nonmain DiscGuard variant
+                // TODO: Nice for convenience, but it wouldn't be unreasonable to remove
+                // TODO: this with the expectation that the user should be providing their own
+                // TODO: LSD/SBI anyways. Keeping for now, just putting this here for anyone who
+                // TODO: may want to consider it in the future.
+                
                 Some(DiscGuard) => {
-                    if relative_sector >= 675 && relative_sector <= 750 {
+                    if true && relative_sector >= 675 && relative_sector <= 750 { // TODO: check "is main var"
                         q[4] = bcd(29);
                     } else {
                         q[4] = bcd((relative_sector_count / 75) % 60);

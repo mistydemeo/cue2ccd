@@ -239,8 +239,13 @@ fn work() -> Result<(), Cue2CCDError> {
     let mut lsd_hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
     let mut sbi_hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
 
-    // TODO: see about making lsd/sbi extension checks not case sensitive
-
+    // TODO: #1 - see about making lsd/sbi extension checks not case sensitive
+    // TODO: #2 - verify expected SBI/LSD sizes?
+    // TODO: #3 - choose protection based off of lsd/sbi size if lsd/sbi is present and a
+    // TODO: protection wasn't chosen? This can't be  done universally, but it can be done for a
+    // TODO: lot of stuff. That could also be an issue for anyone who wants to provide an LSD/SBI
+    // TODO: for a non-protection related reason and happens to hit one of the exact sizes/contents
+    // TODO: needed, but that is a use case that does not currently exist.
     if Path::new(&output_stem.with_extension("lsd")).exists() {
         // LSD files are very small, so it seems best to read the whole thing in first?
         let temp_hashmap = generate_lsd_data(std::fs::read(Path::new(
