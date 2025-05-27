@@ -94,14 +94,45 @@ fn get_unique_tracks(tracks: &[Track]) -> Vec<String> {
     files
 }
 
-// Technically speaking, there's no reason you *shouldn't* be able to provide an SBI/LSD
-// file even if you didn't choose protection
+// LSD File Format:
+// The file consists of subQ data, specifically consisting of the actual AMSF that the current subQ
+// was read from, followed by all 12 bytes of subQ data. LSD is definitively better as a file
+// format for storing subchannel data discrepancies as opposed to SBI, which forces you to
+// generate the CRC16 yourself (something that is a huge problem for SecuROM and LibCrypt if
+// you're aiming for accuracy) and ideally should always be preferred if possible.
+fn generate_lsd_data(raw_lsd_data: Vec<u8>) -> Result<HashMap<i64, Vec<u8>>, Cue2CCDError> {
+    // LSD files have never been defined in the cuesheet, and programs (mainly just PS1
+    // emulators so far) that make use of them simply check if there's an LSD file with the
+    // same basename next to the .cue. If one exists, they use it, otherwise they don't.
+    // It seems best to keep in line with this behavior
+
+    let mut hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
+    // should always be multiple of 15
+    for chunk in raw_lsd_data.chunks(15) {
+        let mut q = vec![0; 12];
+        // These don't really need to be muts, but, they should always be getting set in the
+        // enumeration, and it makes things easier to not have to pass them as options
+        let mut m: i64 = 0;
+        let mut s: i64 = 0;
+        let mut f: i64 = 0;
+        for (byte_index, &item) in chunk.iter().enumerate() {
+            match byte_index {
+                0 => m = item as i64,
+                1 => s = item as i64,
+                2 => f = item as i64,
+                _ => q[byte_index - 3] = item,
+            }
+        }
+        hash_map.insert(cdrom::amsf_to_asec(m, s, f), q);
+    }
+    Ok(hash_map)
+}
 
 // SBI File Format:
 // Starts with header 0x53 0x42 0x49 0x00 ('S' 'B' 'I' '0x00')
 // The entire rest of the file consists of subQ data, specifically consisting of the actual
-// AMSF current subQ was read from, followed by a dummy 0x01 byte, followed by the first 10 bytes
-// of that subQ (so, everything but the CRC16) The exclusion of the CRC16 is obviously
+// AMSF that the current subQ was read from, followed by a dummy 0x01 byte, followed by the first
+// 10 bytes of that subQ (so, everything but the CRC16). The exclusion of the CRC16 is obviously
 // annoying, *especially* for SecuROM and LibCrypt. LSD is a better file format, but at the
 // moment, redump will only generate LSD files for PS1 discs, and we do not have the power to
 // change the website; so, until a successor website exists, SBI support is necessary. It's
@@ -111,7 +142,7 @@ fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<HashMap<i64, Vec<u8>>, Cue
     // SBI files have never been defined in the cuesheet, and programs (mainly just PS1
     // emulators so far) that make use of them simply check if there's an SBI file with the
     // same basename next to the .cue. If one exists, they use it, otherwise they don't.
-    // It seems  best to keep in line with this behavior
+    // It seems best to keep in line with this behavior
 
     let (header, data) = raw_sbi_data.split_at(4);
     let mut hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
@@ -205,11 +236,18 @@ fn work() -> Result<(), Cue2CCDError> {
     if !missing_files.is_empty() {
         return Err(Cue2CCDError::MissingFilesError { missing_files });
     }
-
+    let mut lsd_hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
     let mut sbi_hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
 
-    // TODO: is this extension check case sensitive?
-    if Path::new(&output_stem.with_extension("sbi")).exists() {
+    // TODO: see about making lsd/sbi extension checks not case sensitive
+
+    if Path::new(&output_stem.with_extension("lsd")).exists() {
+        // LSD files are very small, so it seems best to read the whole thing in first?
+        let temp_hashmap = generate_lsd_data(std::fs::read(Path::new(
+            &output_stem.with_extension("lsd"),
+        ))?)?;
+        lsd_hash_map = temp_hashmap;
+    } else if Path::new(&output_stem.with_extension("sbi")).exists() {
         // SBI files are very small, so it seems best to read the whole thing in first?
         let temp_hashmap = generate_sbi_data(std::fs::read(Path::new(
             &output_stem.with_extension("sbi"),
@@ -222,7 +260,11 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let disc = Disc::from_cuesheet(cd, root);
     for sector in disc.sectors() {
-        sub_write.write_all(&sector.generate_subchannel(&chosen_protection_type, &sbi_hash_map))?;
+        sub_write.write_all(&sector.generate_subchannel(
+            &chosen_protection_type,
+            &sbi_hash_map,
+            &lsd_hash_map,
+        ))?;
     }
 
     let ccd_target = output_stem.with_extension("ccd");
