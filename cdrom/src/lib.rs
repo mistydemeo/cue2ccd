@@ -451,7 +451,7 @@ impl Sector {
     pub fn generate_subchannel(
         &self,
         _chosen_protection_type: &Option<DiscProtection>,
-        sbi_hash_map: Option<&HashMap<i64, Vec<u8>>>,
+        sbi_hash_map: &HashMap<i64, Vec<u8>>,
     ) -> Vec<u8> {
         // The first sector of a track, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
@@ -492,7 +492,7 @@ impl Sector {
         index: u8,
         track_type: TrackMode,
         _chosen_protection_type: &Option<DiscProtection>,
-        sbi_hash_map: Option<&HashMap<i64, Vec<u8>>>,
+        sbi_hash_map: &HashMap<i64, Vec<u8>>,
     ) -> Vec<u8> {
         // This channel made up of a sequence of bits; we'll start by
         // zeroing it out, then setting individual bits.
@@ -502,7 +502,7 @@ impl Sector {
         // in the audio, but either way, no checking is really necessary since this brings all
         // the data anyways.
 
-        if let Some(sbi_q) = sbi_hash_map.and_then(|m| m.get(&absolute_sector)) {
+        if let Some(sbi_q) = sbi_hash_map.get(&absolute_sector) {
             let mut local_sbi_q = sbi_q.clone();
             // I know this duplicates the crc stuff later on, but for SBI support for securom and
             // libcrypt, it's probably going to be easier if this branch of the if statement has
@@ -641,11 +641,11 @@ impl Pointer {
 
 #[cfg(test)]
 mod tests {
+    use cue::cd::CD;
+    use std::collections::HashMap;
     use std::fs::{read_to_string, File};
     use std::io::Read;
     use std::{io::Write, path::PathBuf};
-
-    use cue::cd::CD;
 
     use crate::Disc;
 
@@ -681,7 +681,7 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(&None, None))
+            buf.write_all(&sector.generate_subchannel(&None, &HashMap::new()))
                 .unwrap();
         }
 
@@ -721,7 +721,7 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(&None, None))
+            buf.write_all(&sector.generate_subchannel(&None, &HashMap::new()))
                 .unwrap();
         }
 
