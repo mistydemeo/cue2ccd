@@ -283,6 +283,14 @@ fn work() -> Result<(), Cue2CCDError> {
             return Err(Cue2CCDError::InvalidProtectionSBIError {});
         }
         sbi_hash_map = temp_hashmap;
+    } else {
+        match temp_chosen_protection_type {
+            Some("discguard") => chosen_protection_type = Some(DiscProtection::DiscGuardScheme2),
+            //Some("securom") => Some(DiscProtection::SecuROM),
+            //Some("libcrypt") => Some(DiscProtection::LibCrypt),
+            //None => None,
+            _ => return Err(Cue2CCDError::InvalidProtectionError {}),
+        };
     }
 
     let sub_target = output_stem.with_extension("sub");
