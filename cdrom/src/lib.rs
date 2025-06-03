@@ -602,7 +602,7 @@ impl Sector {
             // I don't worry about checking for LSD or SBI here since if one was provided, it
             // will never reach this code anyways.
             Some(DiscProtection::DiscGuardScheme2) => {
-                if relative_sector >= 675 && relative_sector <= 750 {
+                if (675..=750).contains(&relative_sector) {
                     q[4] = bcd(29);
                 } else {
                     q[4] = bcd((relative_sector_count / 75) % 60);
