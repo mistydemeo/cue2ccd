@@ -293,7 +293,7 @@ fn work() -> Result<(), Cue2CCDError> {
             Some("discguard") => chosen_protection_type = Some(DiscProtection::DiscGuardScheme2),
             //Some("securom") => Some(DiscProtection::SecuROM),
             //Some("libcrypt") => Some(DiscProtection::LibCrypt),
-            //None => None,
+            None => chosen_protection_type = None,
             _ => return Err(Cue2CCDError::InvalidProtectionError {}),
         };
     }
