@@ -449,7 +449,7 @@ impl Sector {
     // http://www.ecma-international.org/publications/standards/Ecma-130.htm
     pub fn generate_subchannel(
         &self,
-        _chosen_protection_type: &Option<DiscProtection>,
+        chosen_protection_type: &Option<DiscProtection>,
         preconstructed_q_subchannels: &HashMap<i64, Vec<u8>>,
     ) -> Vec<u8> {
         // The first sector of a track, and only the first sector,
@@ -468,7 +468,7 @@ impl Sector {
             self.track.number,
             self.index.number,
             self.track.mode,
-            _chosen_protection_type,
+            chosen_protection_type,
             preconstructed_q_subchannels,
         );
         // The vast majority of real discs write their unused R-W fields as 0s,
@@ -490,7 +490,7 @@ impl Sector {
         track: u8,
         index: u8,
         track_type: TrackMode,
-        _chosen_protection_type: &Option<DiscProtection>,
+        chosen_protection_type: &Option<DiscProtection>,
         preconstructed_q_subchannels: &HashMap<i64, Vec<u8>>,
     ) -> Vec<u8> {
         // LSD/SBI checked without checking for specific protection chosen because technically
@@ -506,7 +506,7 @@ impl Sector {
                 track,
                 index,
                 track_type,
-                _chosen_protection_type,
+                chosen_protection_type,
             )
         }
     }
@@ -517,7 +517,7 @@ impl Sector {
         track: u8,
         index: u8,
         track_type: TrackMode,
-        _chosen_protection_type: &Option<DiscProtection>,
+        chosen_protection_type: &Option<DiscProtection>,
     ) -> Vec<u8> {
         // This channel made up of a sequence of bits; we'll start by
         // zeroing it out, then setting individual bits.
@@ -550,7 +550,7 @@ impl Sector {
         // usually only two values are seen:
         // 00 - Pregap or postgap
         // 01 - First index within the track, or leadout
-        match _chosen_protection_type {
+        match chosen_protection_type {
             // For some reason, for later/main variant DiscGuard discs, index 02 is only applied for
             // the q subchannel in sectors 450-525. Probably not important, but I'd like to be
             // accurate.
@@ -593,7 +593,7 @@ impl Sector {
         // MIN
         q[3] = bcd(relative_sector_count / 4500);
         // SEC
-        match _chosen_protection_type {
+        match chosen_protection_type {
             // Nice for convenience, but it wouldn't be unreasonable to remove
             // this with the expectation that the user should be providing their own
             // LSD/SBI anyways. Keeping for now, just putting this here for anyone who
