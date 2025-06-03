@@ -174,6 +174,12 @@ fn generate_sbi_data(raw_sbi_data: Vec<u8>) -> Result<HashMap<i64, Vec<u8>>, Cue
                 _ => q[byte_index - 4] = item,
             }
         }
+        // Unlike LSD, SBI is missing the CRC16, so we have to do that
+        // ourselves.
+        let crc = cdrom::crc16(&q, cdrom::CRC16_INITIAL_CRC);
+        q.push(((crc >> 8) & 0xFF) as u8);
+        q.push((crc & 0xFF) as u8);
+
         hash_map.insert(cdrom::amsf_to_asec(m, s, f), q);
     }
     Ok(hash_map)
@@ -245,8 +251,7 @@ fn work() -> Result<(), Cue2CCDError> {
     if !missing_files.is_empty() {
         return Err(Cue2CCDError::MissingFilesError { missing_files });
     }
-    let mut lsd_hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
-    let mut sbi_hash_map: HashMap<i64, Vec<u8>> = HashMap::new();
+    let mut preconstructed_q_subcodes: HashMap<i64, Vec<u8>> = Default::default();
 
     // TODO: #1 - see about making lsd/sbi extension checks not case sensitive
     // TODO: #2 - verify expected SBI/LSD sizes?
@@ -268,7 +273,7 @@ fn work() -> Result<(), Cue2CCDError> {
         } else if temp_chosen_protection_type == Some("discguard") {
             return Err(Cue2CCDError::InvalidProtectionLSDError {});
         }
-        lsd_hash_map = temp_hashmap;
+        preconstructed_q_subcodes = temp_hashmap;
     } else if Path::new(&output_stem.with_extension("sbi")).exists() {
         // SBI files are very small, so it seems best to read the whole thing in first?
         let temp_hashmap = generate_sbi_data(std::fs::read(Path::new(
@@ -282,7 +287,7 @@ fn work() -> Result<(), Cue2CCDError> {
         } else if temp_chosen_protection_type == Some("discguard") {
             return Err(Cue2CCDError::InvalidProtectionSBIError {});
         }
-        sbi_hash_map = temp_hashmap;
+        preconstructed_q_subcodes = temp_hashmap;
     } else {
         match temp_chosen_protection_type {
             Some("discguard") => chosen_protection_type = Some(DiscProtection::DiscGuardScheme2),
@@ -298,11 +303,9 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let disc = Disc::from_cuesheet(cd, root);
     for sector in disc.sectors() {
-        sub_write.write_all(&sector.generate_subchannel(
-            &chosen_protection_type,
-            &sbi_hash_map,
-            &lsd_hash_map,
-        ))?;
+        sub_write.write_all(
+            &sector.generate_subchannel(&chosen_protection_type, &preconstructed_q_subcodes),
+        )?;
     }
 
     let ccd_target = output_stem.with_extension("ccd");

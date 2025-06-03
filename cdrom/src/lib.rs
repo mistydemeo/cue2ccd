@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
 
-use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
+pub use cdrom_crc::{crc16, CRC16_INITIAL_CRC};
 pub use cue;
 use cue::cd::CD;
 use cue::track;
@@ -450,8 +450,7 @@ impl Sector {
     pub fn generate_subchannel(
         &self,
         _chosen_protection_type: &Option<DiscProtection>,
-        sbi_hash_map: &HashMap<i64, Vec<u8>>,
-        lsd_hash_map: &HashMap<i64, Vec<u8>>,
+        preconstructed_q_subchannels: &HashMap<i64, Vec<u8>>,
     ) -> Vec<u8> {
         // The first sector of a track, and only the first sector,
         // gets an FFed out P sector like a pregap. Every other non-pregap
@@ -470,8 +469,7 @@ impl Sector {
             self.index.number,
             self.track.mode,
             _chosen_protection_type,
-            sbi_hash_map,
-            lsd_hash_map,
+            preconstructed_q_subchannels,
         );
         // The vast majority of real discs write their unused R-W fields as 0s,
         // but at least one real disc used FFs instead. We'll side with the
@@ -493,27 +491,14 @@ impl Sector {
         index: u8,
         track_type: TrackMode,
         _chosen_protection_type: &Option<DiscProtection>,
-        sbi_hash_map: &HashMap<i64, Vec<u8>>,
-        lsd_hash_map: &HashMap<i64, Vec<u8>>,
+        preconstructed_q_subchannels: &HashMap<i64, Vec<u8>>,
     ) -> Vec<u8> {
         // LSD/SBI checked without checking for specific protection chosen because technically
         // speaking, there's no reason you *shouldn't* be able to provide an LSD/SBI file even if
         // you didn't choose protection
 
-        if let Some(lsd_q) = lsd_hash_map.get(&absolute_sector) {
-            lsd_q.clone()
-        } else if let Some(sbi_q) = sbi_hash_map.get(&absolute_sector) {
-            // It would be surprising if there was a protection that relied on changing the
-            // subchannels in the audio, but either way, no track checking is really necessary
-            // since this brings  all the data anyway.
-            let mut local_sbi_q = sbi_q.clone();
-            // I know this duplicates the crc stuff later on, but for SBI support for securom and
-            // libcrypt, it's probably going to be easier if this branch of the if statement has
-            // all the crc stuff in it that it needs.
-            let crc = crc16(&local_sbi_q, CRC16_INITIAL_CRC);
-            local_sbi_q.push(((crc >> 8) & 0xFF) as u8);
-            local_sbi_q.push((crc & 0xFF) as u8);
-            local_sbi_q
+        if let Some(q) = preconstructed_q_subchannels.get(&absolute_sector) {
+            q.clone()
         } else {
             Sector::generate_q_subchannel_from_scratch(
                 absolute_sector,
@@ -726,7 +711,7 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(&None, &HashMap::new(), &HashMap::new()))
+            buf.write_all(&sector.generate_subchannel(&None, &HashMap::new()))
                 .unwrap();
         }
 
@@ -766,7 +751,7 @@ mod tests {
 
         let mut buf = vec![];
         for sector in disc.sectors() {
-            buf.write_all(&sector.generate_subchannel(&None, &HashMap::new(), &HashMap::new()))
+            buf.write_all(&sector.generate_subchannel(&None, &HashMap::new()))
                 .unwrap();
         }
 
