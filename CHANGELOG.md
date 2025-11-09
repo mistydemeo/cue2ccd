@@ -1,3 +1,11 @@
+# Version 1.1.0 (2025-11-08)
+
+This release contains a brand-new feature: subchannel-based protection emulation! If you specfiy a specific protection scheme when running cue2ccd, it will generate the subchannel data in the right nonstandard way the protection scheme expects. This can be useful for people who have created BIN/CUE copies of protected CDs and have lost the original subchannel data they need for it to work.
+
+In this first release, DiscGuard v1 and DiscGuard v2 are supported; future versions may add support for libcrypt and SecuROM.
+
+This feature was contributed by @HeroponRikiBestest.
+
 # Version 1.0.3 (2025-05-26)
 
 This release fixes two minor bugs with subchannel generation. These caused certain bits of timing information to be off by a single sector. It's unlikely this caused any discs not to work, but it may have caused very minor audio sync issues for certain discs.
