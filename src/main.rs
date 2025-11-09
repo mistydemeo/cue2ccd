@@ -228,8 +228,6 @@ fn work() -> Result<(), Cue2CCDError> {
         .as_deref()
     {
         Some("discguard") => Some("discguard"),
-        Some("securom") => Some("securom"),
-        Some("libcrypt") => Some("libcrypt"),
         None => None,
         _ => return Err(Cue2CCDError::InvalidProtectionError {}),
     };
@@ -291,8 +289,6 @@ fn work() -> Result<(), Cue2CCDError> {
     } else {
         match temp_chosen_protection_type {
             Some("discguard") => chosen_protection_type = Some(DiscProtection::DiscGuardScheme2),
-            //Some("securom") => Some(DiscProtection::SecuROM),
-            //Some("libcrypt") => Some(DiscProtection::LibCrypt),
             None => chosen_protection_type = None,
             _ => return Err(Cue2CCDError::InvalidProtectionError {}),
         };
