@@ -22,9 +22,6 @@ enum Cue2CCDError {
 
     #[error("Unable to determine the filename portion of {filename}!")]
     NoFilenameError { filename: String },
-    // TODO: list choices on this error, also in other places
-    #[error("Protection flag provided with invalid protection type!")]
-    InvalidProtectionError {},
 
     // Thrown if SBI file exists but doesn't have the correct SBI header
     #[error("Invalid SBI file!")]
@@ -226,13 +223,6 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let tracks = cd.tracks();
 
-    let mut chosen_protection_type: Option<DiscProtection> = None;
-    // Technically mostly unused for now, but this will need to be here.
-    let temp_chosen_protection_type: Option<&str> = match args.protection_type {
-        Some(ProtectionType::DiscGuard) => Some("discguard"),
-        None => None,
-    };
-
     // We validate that the track modes are compatible. BIN/CUE can be
     // a variety of different formats, including WAVE files and "cooked"
     // tracks with no error correction metadata. We need all raw files in
@@ -252,6 +242,7 @@ fn work() -> Result<(), Cue2CCDError> {
     }
     let mut preconstructed_q_subcodes: HashMap<i64, Vec<u8>> = Default::default();
 
+    let mut chosen_protection_type: Option<DiscProtection> = None;
     // TODO: #1 - see about making lsd/sbi extension checks not case sensitive
     // TODO: #2 - verify expected SBI/LSD sizes?
     // TODO: #3 - choose protection based off of lsd/sbi size if lsd/sbi is present and a
@@ -269,7 +260,7 @@ fn work() -> Result<(), Cue2CCDError> {
             chosen_protection_type = Some(DiscProtection::DiscGuardScheme2);
         } else if len == 600 {
             chosen_protection_type = Some(DiscProtection::DiscGuardScheme1);
-        } else if temp_chosen_protection_type == Some("discguard") {
+        } else if matches!(args.protection_type, Some(ProtectionType::DiscGuard)) {
             return Err(Cue2CCDError::InvalidProtectionLSDError {});
         }
         preconstructed_q_subcodes = temp_hashmap;
@@ -283,16 +274,12 @@ fn work() -> Result<(), Cue2CCDError> {
             chosen_protection_type = Some(DiscProtection::DiscGuardScheme2);
         } else if len == 600 {
             chosen_protection_type = Some(DiscProtection::DiscGuardScheme1);
-        } else if temp_chosen_protection_type == Some("discguard") {
+        } else if matches!(args.protection_type, Some(ProtectionType::DiscGuard)) {
             return Err(Cue2CCDError::InvalidProtectionSBIError {});
         }
         preconstructed_q_subcodes = temp_hashmap;
-    } else {
-        match temp_chosen_protection_type {
-            Some("discguard") => chosen_protection_type = Some(DiscProtection::DiscGuardScheme2),
-            None => chosen_protection_type = None,
-            _ => return Err(Cue2CCDError::InvalidProtectionError {}),
-        };
+    } else if matches!(args.protection_type, Some(ProtectionType::DiscGuard)) {
+        chosen_protection_type = Some(DiscProtection::DiscGuardScheme2);
     }
 
     let sub_target = output_stem.with_extension("sub");
