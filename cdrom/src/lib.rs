@@ -28,7 +28,7 @@ pub struct Disc {
 }
 
 impl Disc {
-    pub fn sectors(&self) -> SectorIterator {
+    pub fn sectors(&self) -> SectorIterator<'_> {
         SectorIterator {
             current: 0,
             disc: self,
