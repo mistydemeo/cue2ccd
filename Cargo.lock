@@ -194,9 +194,9 @@ dependencies = [
 
 [[package]]
 name = "cue-sys"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d655a8fb46d3d9550ff44ade93963b2edb770acf0f5ab7d24e29591778d55f8"
+checksum = "aacab32605a00e807f2fe1f8c5ecfab91da08d34269bcd7319ca60c41a4a806f"
 dependencies = [
  "cmake",
  "libc",
