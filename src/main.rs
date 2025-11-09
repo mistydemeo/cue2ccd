@@ -7,7 +7,7 @@ use cdrom::cue::cd::CD;
 use cdrom::cue::track::{Track, TrackMode};
 use cdrom::Disc;
 use cdrom::DiscProtection;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use miette::{Diagnostic, Result};
 use thiserror::Error;
 
@@ -51,6 +51,12 @@ enum Cue2CCDError {
     Cue(#[from] std::ffi::NulError),
 }
 
+#[derive(Clone, Debug, ValueEnum)]
+enum ProtectionType {
+    #[clap(name = "discguard")]
+    DiscGuard,
+}
+
 #[derive(Parser, Debug)]
 #[command(
     author,
@@ -64,8 +70,8 @@ struct Args {
     skip_img_copy: bool,
     #[arg(long)]
     output_path: Option<String>,
-    #[arg(long)]
-    pub protection_type: Option<String>,
+    #[arg(long, value_enum)]
+    pub protection_type: Option<ProtectionType>,
 }
 
 fn validate_mode(tracks: &[Track]) -> Result<(), Cue2CCDError> {
@@ -222,14 +228,9 @@ fn work() -> Result<(), Cue2CCDError> {
 
     let mut chosen_protection_type: Option<DiscProtection> = None;
     // Technically mostly unused for now, but this will need to be here.
-    let temp_chosen_protection_type: Option<&str> = match args
-        .protection_type
-        .map(|t| t.to_ascii_lowercase())
-        .as_deref()
-    {
-        Some("discguard") => Some("discguard"),
+    let temp_chosen_protection_type: Option<&str> = match args.protection_type {
+        Some(ProtectionType::DiscGuard) => Some("discguard"),
         None => None,
-        _ => return Err(Cue2CCDError::InvalidProtectionError {}),
     };
 
     // We validate that the track modes are compatible. BIN/CUE can be
