@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/"><channel><title>cue2ccd Changelog</title><link>http://127.0.0.1:7979/cue2ccd/changelog</link><description>Changelog information for cue2ccd</description><category domain="https://github.com/mistydemeo/cue2ccd">cue2ccd Changelog</category><atom:link href="http://127.0.0.1:7979/cue2ccd/changelog.rss" rel="self"/><item><title>Version 1.1.0 (2025-11-08)</title><link>http://127.0.0.1:7979/cue2ccd/changelog/v1.1.0</link><category domain="https://github.com/mistydemeo/cue2ccd">cue2ccd Changelog</category><guid>http://127.0.0.1:7979/cue2ccd/changelog/v1.1.0</guid><content:encoded><![CDATA[<p>This release contains a brand-new feature: subchannel-based protection emulation! If you specfiy a specific protection scheme when running cue2ccd, it will generate the subchannel data in the right nonstandard way the protection scheme expects. This can be useful for people who have created BIN/CUE copies of protected CDs and have lost the original subchannel data they need for it to work.</p>
+<p>In this first release, DiscGuard v1 and DiscGuard v2 are supported; future versions may add support for libcrypt and SecuROM.</p>
+<p>This feature was contributed by @HeroponRikiBestest.</p>
+]]></content:encoded></item><item><title>Version 1.0.3 (2025-05-26)</title><link>http://127.0.0.1:7979/cue2ccd/changelog/v1.0.3</link><category domain="https://github.com/mistydemeo/cue2ccd">cue2ccd Changelog</category><guid>http://127.0.0.1:7979/cue2ccd/changelog/v1.0.3</guid><content:encoded><![CDATA[<p>This release fixes two minor bugs with subchannel generation. These caused certain bits of timing information to be off by a single sector. It's unlikely this caused any discs not to work, but it may have caused very minor audio sync issues for certain discs.</p>
+<ul>
+<li>Fixes an off-by-one error in the index location in the subchannel. (@HeroponRikiBestest - #30)</li>
+<li>Fixes an error in the position where the P subchannel should end. (@mistydemeo - #32)</li>
+</ul>
+]]></content:encoded></item><item><title>Version 1.0.2 (2025-05-20)</title><link>http://127.0.0.1:7979/cue2ccd/changelog/v1.0.2</link><category domain="https://github.com/mistydemeo/cue2ccd">cue2ccd Changelog</category><guid>http://127.0.0.1:7979/cue2ccd/changelog/v1.0.2</guid><content:encoded><![CDATA[<p>This fixes several bugs:</p>
+<ul>
+<li>Bad <code>.img</code> files were being generated for single-file images containing multiple tracks. (#21)</li>
+<li>Removes a "syntax error" message when parsing most cue sheets. There wasn't an issue with the cue sheets themselves; this was a bug in the cue sheet parser cue2ccd uses.</li>
+</ul>
+]]></content:encoded></item><item><title>Version 1.0.1 (2024-12-19)</title><link>http://127.0.0.1:7979/cue2ccd/changelog/v1.0.1</link><category domain="https://github.com/mistydemeo/cue2ccd">cue2ccd Changelog</category><guid>http://127.0.0.1:7979/cue2ccd/changelog/v1.0.1</guid><content:encoded><![CDATA[<p>This fixes a few bugs from the initial release:</p>
+<ul>
+<li>Subcode data was being generated incorrectly for split images.</li>
+<li>Output filenames were generated incorrectly for cue sheets containing periods in their names.</li>
+</ul>
+]]></content:encoded></item><item><title>Version 1.0.0 (2024-12-14)</title><link>http://127.0.0.1:7979/cue2ccd/changelog/v1.0.0</link><category domain="https://github.com/mistydemeo/cue2ccd">cue2ccd Changelog</category><guid>http://127.0.0.1:7979/cue2ccd/changelog/v1.0.0</guid><content:encoded><![CDATA[<p>This is the initial release.</p>
+]]></content:encoded></item></channel></rss>

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en" id="oranda" class="axo">
+  <head>
+    <title>cue2ccd</title>
+    
+      <meta property="og:url" content="https://www.mistys-internet.website/cue2ccd/" />
+    
+    
+      <link rel="icon" href="/cue2ccd/favicon.ico" />
+    
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+      <meta name="description" content="Tool to convert BIN/CUE disc images to CCD/IMG/SUB" />
+      <meta property="og:description" content="Tool to convert BIN/CUE disc images to CCD/IMG/SUB" />
+    
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="cue2ccd" />
+    
+    
+    
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()" />
+    <link rel="stylesheet" href="/cue2ccd/oranda-v0.6.1.css" />
+    
+    
+  </head>
+  <body>
+    <div class="container">
+      <div class="page-body">
+        
+          <div class="repo_banner">
+            <a href="https://github.com/mistydemeo/cue2ccd">
+              <div class="github-icon" aria-hidden="true"></div>
+              Check out our GitHub!
+            </a>
+          </div>
+        
+
+        <main>
+          <header>
+            
+            <h1 class="title">cue2ccd</h1>
+            
+  <nav class="nav">
+    <ul>
+      <li><a href="/cue2ccd/">Home</a></li>
+
+      
+
+      
+        <li><a href="/cue2ccd/artifacts/">Install</a></li>
+      
+
+      
+
+      
+
+      
+        <li><a href="/cue2ccd/changelog/">Changelog</a></li>
+      
+    </ul>
+  </nav>
+
+          </header>
+
+          
+  <div>
+    <h1>
+      Releases
+      
+        <a href="/cue2ccd/changelog.rss" class="inline-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+  <path d="M3.75 3a.75.75 0 00-.75.75v.5c0 .414.336.75.75.75H4c6.075 0 11 4.925 11 11v.25c0 .414.336.75.75.75h.5a.75.75 0 00.75-.75V16C17 8.82 11.18 3 4 3h-.25z" />
+  <path d="M3 8.75A.75.75 0 013.75 8H4a8 8 0 018 8v.25a.75.75 0 01-.75.75h-.5a.75.75 0 01-.75-.75V16a6 6 0 00-6-6h-.25A.75.75 0 013 9.25v-.5zM7 15a2 2 0 11-4 0 2 2 0 014 0z" />
+</svg></a>
+      
+    </h1>
+    <div class="releases-wrapper">
+      <nav class="releases-nav">
+        
+
+        
+        <ul>
+          
+            <li class="">
+              <a href="v1.1.0/">v1.1.0</a>
+            </li>
+          
+            <li class="">
+              <a href="v1.0.3/">v1.0.3</a>
+            </li>
+          
+            <li class="">
+              <a href="v1.0.2/">v1.0.2</a>
+            </li>
+          
+            <li class="">
+              <a href="v1.0.1/">v1.0.1</a>
+            </li>
+          
+            <li class="">
+              <a href="v1.0.0/">v1.0.0</a>
+            </li>
+          
+        </ul>
+      </nav>
+
+      <div class="releases-list">
+        
+          
+          <section class="release ">
+  <h2 id="tag-v1.1.0">
+    <a href="v1.1.0/">
+      
+        Version 1.1.0 (2025-11-08)
+      
+    </a>
+  </h2>
+  <div class="release-info">
+    <span class="flex items-center gap-2">
+      <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'>
+    <path stroke-linecap='round' stroke-linejoin='round' d='M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z' />
+    <path stroke-linecap='round' stroke-linejoin='round' d='M6 6h.008v.008H6V6z' /></svg>
+      v1.1.0
+    </span>
+    <span class="flex items-center gap-2">
+      
+        <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'><path stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' /></svg>
+        Nov  9 2025 at 06:22 UTC
+      
+    </span>
+  </div>
+  <div class="release-body">
+    <p>This release contains a brand-new feature: subchannel-based protection emulation! If you specfiy a specific protection scheme when running cue2ccd, it will generate the subchannel data in the right nonstandard way the protection scheme expects. This can be useful for people who have created BIN/CUE copies of protected CDs and have lost the original subchannel data they need for it to work.</p>
+<p>In this first release, DiscGuard v1 and DiscGuard v2 are supported; future versions may add support for libcrypt and SecuROM.</p>
+<p>This feature was contributed by @HeroponRikiBestest.</p>
+
+  </div>
+</section>
+        
+          
+          <section class="release ">
+  <h2 id="tag-v1.0.3">
+    <a href="v1.0.3/">
+      
+        Version 1.0.3 (2025-05-26)
+      
+    </a>
+  </h2>
+  <div class="release-info">
+    <span class="flex items-center gap-2">
+      <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'>
+    <path stroke-linecap='round' stroke-linejoin='round' d='M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z' />
+    <path stroke-linecap='round' stroke-linejoin='round' d='M6 6h.008v.008H6V6z' /></svg>
+      v1.0.3
+    </span>
+    <span class="flex items-center gap-2">
+      
+        <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'><path stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' /></svg>
+        May 27 2025 at 03:38 UTC
+      
+    </span>
+  </div>
+  <div class="release-body">
+    <p>This release fixes two minor bugs with subchannel generation. These caused certain bits of timing information to be off by a single sector. It's unlikely this caused any discs not to work, but it may have caused very minor audio sync issues for certain discs.</p>
+<ul>
+<li>Fixes an off-by-one error in the index location in the subchannel. (@HeroponRikiBestest - #30)</li>
+<li>Fixes an error in the position where the P subchannel should end. (@mistydemeo - #32)</li>
+</ul>
+
+  </div>
+</section>
+        
+          
+          <section class="release ">
+  <h2 id="tag-v1.0.2">
+    <a href="v1.0.2/">
+      
+        Version 1.0.2 (2025-05-20)
+      
+    </a>
+  </h2>
+  <div class="release-info">
+    <span class="flex items-center gap-2">
+      <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'>
+    <path stroke-linecap='round' stroke-linejoin='round' d='M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z' />
+    <path stroke-linecap='round' stroke-linejoin='round' d='M6 6h.008v.008H6V6z' /></svg>
+      v1.0.2
+    </span>
+    <span class="flex items-center gap-2">
+      
+        <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'><path stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' /></svg>
+        May 21 2025 at 04:24 UTC
+      
+    </span>
+  </div>
+  <div class="release-body">
+    <p>This fixes several bugs:</p>
+<ul>
+<li>Bad <code>.img</code> files were being generated for single-file images containing multiple tracks. (#21)</li>
+<li>Removes a "syntax error" message when parsing most cue sheets. There wasn't an issue with the cue sheets themselves; this was a bug in the cue sheet parser cue2ccd uses.</li>
+</ul>
+
+  </div>
+</section>
+        
+          
+          <section class="release ">
+  <h2 id="tag-v1.0.1">
+    <a href="v1.0.1/">
+      
+        Version 1.0.1 (2024-12-19)
+      
+    </a>
+  </h2>
+  <div class="release-info">
+    <span class="flex items-center gap-2">
+      <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'>
+    <path stroke-linecap='round' stroke-linejoin='round' d='M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z' />
+    <path stroke-linecap='round' stroke-linejoin='round' d='M6 6h.008v.008H6V6z' /></svg>
+      v1.0.1
+    </span>
+    <span class="flex items-center gap-2">
+      
+        <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'><path stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' /></svg>
+        Dec 20 2024 at 18:19 UTC
+      
+    </span>
+  </div>
+  <div class="release-body">
+    <p>This fixes a few bugs from the initial release:</p>
+<ul>
+<li>Subcode data was being generated incorrectly for split images.</li>
+<li>Output filenames were generated incorrectly for cue sheets containing periods in their names.</li>
+</ul>
+
+  </div>
+</section>
+        
+          
+          <section class="release ">
+  <h2 id="tag-v1.0.0">
+    <a href="v1.0.0/">
+      
+        Version 1.0.0 (2024-12-14)
+      
+    </a>
+  </h2>
+  <div class="release-info">
+    <span class="flex items-center gap-2">
+      <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'>
+    <path stroke-linecap='round' stroke-linejoin='round' d='M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z' />
+    <path stroke-linecap='round' stroke-linejoin='round' d='M6 6h.008v.008H6V6z' /></svg>
+      v1.0.0
+    </span>
+    <span class="flex items-center gap-2">
+      
+        <svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='currentColor' class='w-6 h-6'><path stroke-linecap='round' stroke-linejoin='round' d='M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5' /></svg>
+        Dec 14 2024 at 22:45 UTC
+      
+    </span>
+  </div>
+  <div class="release-body">
+    <p>This is the initial release.</p>
+
+  </div>
+</section>
+        
+      </div>
+    </div>
+  </div>
+
+        </main>
+      </div>
+
+      <footer>
+        
+          <a href="https://github.com/mistydemeo/cue2ccd"><div class="github-icon" aria-hidden="true"></div></a>
+        
+        <span>
+          cue2ccd
+        </span>
+      </footer>
+    </div>
+
+    
+    
+
+    
+  <script src="/cue2ccd/artifacts.js"></script>
+
+  </body>
+</html>
